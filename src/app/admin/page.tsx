@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { adminOverview } from "@/lib/admin";
+import { requireAdmin } from "@/lib/current-user";
 import { bookingStatusLabel } from "@/lib/bookings";
 import { categories } from "@/lib/categories";
 import { formatDateRu } from "@/lib/format";
@@ -14,7 +14,7 @@ export default function AdminHomePage() {
 }
 
 async function Body() {
-  await connection();
+  await requireAdmin();
   const overview = adminOverview();
   return (
     <div className="grid gap-6">

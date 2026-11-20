@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { hideReviewAction, resolveComplaintAction } from "@/app/actions/admin";
+import { requireAdmin } from "@/lib/current-user";
 import { fieldClass, secondaryButton } from "@/components/styles";
 import { listComplaints } from "@/lib/complaints";
 import { getDb } from "@/lib/db";
@@ -14,7 +14,7 @@ export default function AdminReportsPage() {
 }
 
 async function Body() {
-  await connection();
+  await requireAdmin();
   const complaints = listComplaints();
   const reviews = getDb()
     .prepare(

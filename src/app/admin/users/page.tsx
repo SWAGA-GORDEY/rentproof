@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { blockUserAction } from "@/app/actions/admin";
 import { listUsers } from "@/lib/admin";
+import { requireAdmin } from "@/lib/current-user";
 import { secondaryButton } from "@/components/styles";
 
 export default function AdminUsersPage() {
@@ -13,7 +13,7 @@ export default function AdminUsersPage() {
 }
 
 async function Body() {
-  await connection();
+  await requireAdmin();
   const users = listUsers();
   return (
     <div className="grid gap-4">

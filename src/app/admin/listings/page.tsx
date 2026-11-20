@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { connection } from "next/server";
 import { moderateListingAction } from "@/app/actions/admin";
+import { requireAdmin } from "@/lib/current-user";
 import { fieldClass, secondaryButton } from "@/components/styles";
 import { getDb } from "@/lib/db";
 import { listingStatusLabel, type ListingStatus } from "@/lib/listings";
@@ -15,7 +15,7 @@ export default function AdminListingsPage() {
 }
 
 async function Body() {
-  await connection();
+  await requireAdmin();
   const rows = getDb()
     .prepare(
       `SELECT listings.id, listings.title, listings.status, listings.city, users.email

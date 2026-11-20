@@ -1,9 +1,8 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
-import { requireUser } from "@/lib/current-user";
+import { requireAdmin } from "@/lib/current-user";
 
 export const metadata = { title: "Администрирование — RentProof" };
 
@@ -22,10 +21,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 }
 
 async function Guard({ children }: { children: ReactNode }) {
-  const user = await requireUser();
-  if (!user.isAdmin) {
-    redirect("/account");
-  }
+  await requireAdmin();
   return (
     <div className="grid gap-6">
       <nav aria-label="Администрирование" className="flex flex-wrap gap-3 text-sm font-semibold">

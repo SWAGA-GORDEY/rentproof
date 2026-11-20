@@ -23,6 +23,14 @@ export async function requireUser(): Promise<PublicUser> {
   return user;
 }
 
+export async function requireAdmin(): Promise<PublicUser> {
+  const user = await requireUser();
+  if (!user.isAdmin) {
+    redirect("/account");
+  }
+  return user;
+}
+
 export async function startSession(userId: string): Promise<void> {
   const token = createSession(userId);
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(cookieIsSecure()));
