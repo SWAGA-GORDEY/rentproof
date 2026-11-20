@@ -1,0 +1,73 @@
+"use client";
+
+import { useActionState } from "react";
+import Link from "next/link";
+import { loginAction, type FormState } from "@/app/actions/auth";
+import { fieldClass, primaryButton } from "@/components/styles";
+
+const initialState: FormState = {};
+
+export function LoginForm() {
+  const [state, action, pending] = useActionState(loginAction, initialState);
+
+  return (
+    <form action={action} className="grid gap-4 rounded-3xl border border-line bg-white p-6" noValidate>
+      <Field label="Электронная почта" name="email" type="email" autoComplete="email" error={state.fieldErrors?.email} />
+      <Field
+        label="Пароль"
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        error={state.fieldErrors?.password}
+      />
+      {state.message ? (
+        <p role="alert" className="text-sm text-accent">
+          {state.message}
+        </p>
+      ) : null}
+      <button type="submit" className={primaryButton} disabled={pending}>
+        {pending ? "Входим…" : "Войти"}
+      </button>
+      <p className="text-sm text-muted">
+        Нет учётной записи?{" "}
+        <Link href="/register" className="font-semibold text-navy">
+          Зарегистрироваться
+        </Link>
+      </p>
+    </form>
+  );
+}
+
+function Field({
+  label,
+  name,
+  type,
+  autoComplete,
+  error,
+}: {
+  label: string;
+  name: string;
+  type: string;
+  autoComplete: string;
+  error?: string;
+}) {
+  const errorId = error ? `${name}-error` : undefined;
+  return (
+    <label className="grid gap-1.5 text-sm font-medium text-ink">
+      {label}
+      <input
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        aria-invalid={Boolean(error)}
+        aria-describedby={errorId}
+        className={fieldClass}
+      />
+      {error ? (
+        <span id={errorId} className="font-normal text-accent">
+          {error}
+        </span>
+      ) : null}
+    </label>
+  );
+}

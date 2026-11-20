@@ -1,26 +1,51 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f6fa;
+  --foreground: #172033;
+  color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-navy: #0c2340;
+  --color-navy-deep: #08182c;
+  --color-graphite: #2a3340;
+  --color-ink: #172033;
+  --color-muted: #5c6b7e;
+  --color-mist: #e7eef6;
+  --color-line: #d7e0eb;
+  --color-accent: #1a4f8b;
+  --color-paper: #f7f8fb;
+  --font-sans: var(--font-manrope), "Segoe UI", sans-serif;
+  --font-display: var(--font-unbounded), var(--font-manrope), sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+::selection {
+  background: #d5e3f5;
+  color: #0c2340;
+}
+
+.blueprint {
+  background-image:
+    linear-gradient(to right, rgba(12, 35, 64, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(12, 35, 64, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
