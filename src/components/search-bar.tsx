@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { buildCatalogHref, categories, isCategoryId } from "@/lib/catalog";
+import { categories, isCategoryId } from "@/lib/categories";
 import { primaryButton } from "@/components/styles";
 
 export function SearchBar() {
@@ -27,14 +27,6 @@ export function SearchBar() {
     setCategory(appliedCategory);
   }
 
-  function scrollToCatalog() {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.getElementById("catalog")?.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "start",
-    });
-  }
-
   return (
     <form
       role="search"
@@ -42,8 +34,15 @@ export function SearchBar() {
       className="rounded-2xl border border-line bg-white p-2 shadow-[0_18px_40px_-28px_rgba(12,35,64,0.55)]"
       onSubmit={(event) => {
         event.preventDefault();
-        router.push(buildCatalogHref(query, category), { scroll: false });
-        scrollToCatalog();
+        const params = new URLSearchParams();
+        if (query.trim()) {
+          params.set("q", query.trim());
+        }
+        if (isCategoryId(category)) {
+          params.set("category", category);
+        }
+        const search = params.toString();
+        router.push(search ? `/catalog?${search}` : "/catalog");
       }}
     >
       <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end">

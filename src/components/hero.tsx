@@ -39,7 +39,7 @@ export function Hero() {
               <SearchBar />
             </Suspense>
             <p className="mt-3 text-sm leading-6 text-muted">
-              Кнопка «Найти» оставляет подходящие карточки в каталоге.
+              «Найти» открывает каталог с выбранными условиями.
             </p>
           </div>
         </div>
@@ -84,11 +84,8 @@ export function Hero() {
             </div>
           </dl>
           <p className="mt-5 text-sm leading-6 text-graphite">{featured.summary}</p>
-          <Link
-            href={`/?category=${featured.category}&q=${encodeURIComponent(featured.title.split(" ")[0] ?? featured.title)}#catalog`}
-            className={`${secondaryButton} mt-6 w-full`}
-          >
-            Показать эту технику в каталоге
+          <Link href="/catalog" className={`${secondaryButton} mt-6 w-full`}>
+            Открыть каталог
           </Link>
         </aside>
       </div>

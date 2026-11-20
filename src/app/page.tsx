@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { AiAssessment } from "@/components/ai-assessment";
+import { AppHeader } from "@/components/app-header";
 import { Benefits } from "@/components/benefits";
 import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
-import { Marketplace, MarketplaceFallback } from "@/components/marketplace";
+import { HomeCatalog, HomeCatalogFallback } from "@/components/home-catalog";
 import { Pricing } from "@/components/pricing";
 
 export default function Home() {
@@ -16,11 +16,11 @@ export default function Home() {
       >
         Перейти к каталогу
       </a>
-      <Header />
+      <AppHeader />
       <main className="flex-1">
         <Hero />
-        <Suspense fallback={<MarketplaceFallback />}>
-          <Marketplace />
+        <Suspense fallback={<HomeCatalogFallback />}>
+          <HomeCatalog />
         </Suspense>
         <Benefits />
         <AiAssessment />

@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RentProof
 
-## Getting Started
+Площадка аренды имущества: объявления, каталог, заявки на даты и визуальная оценка снимков. Платежи не списываются. Суммы на экране — демонстрационный расчёт.
 
-First, run the development server:
+## Запуск
 
-```bash
+Нужен Node.js 22.13 или новее.
+
+```
+npm install
+copy .env.example .env
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+npm test
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Production-сборка включает `output: "standalone"`. Долгоживущий процесс: `node .next/standalone/server.js` после копирования `public` и `.next/static` в каталог standalone. Образ для этого уже описан в `Dockerfile`.
 
-## Learn More
+## Данные
 
-To learn more about Next.js, take a look at the following resources:
+SQLite: `data/rentproof.sqlite`. Фотографии: `data/uploads`. Оба пути в `.gitignore`. Подробности и путь к PostgreSQL — в [docs/DATABASE.md](docs/DATABASE.md).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Администратор не регистрируется с сайта. Повышение:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+RENTPROOF_ADMIN_EMAIL=you@example.com RENTPROOF_ADMIN_PASSWORD=long-secret npm run admin:bootstrap
+```
 
-## Deploy on Vercel
+Пароль не короче 10 символов. Команда создаёт или повышает существующего пользователя и ставит `is_admin`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Внешние сервисы
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Визуальная модель подключается через `OPENAI_API_KEY`. Без ключа отчёт сохраняется как «нужна настройка», без выдуманного анализа. Инструкция: [docs/AI_SETUP.md](docs/AI_SETUP.md).
+
+Почта не отправляется. Поля `SMTP_HOST` и `SMTP_FROM` только отмечают, что канал ещё не подключён. Тарифы Free, Plus и Pro переключаются в демонстрационном режиме и ничего не списывают.

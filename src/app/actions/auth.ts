@@ -5,17 +5,21 @@ import { redirect } from "next/navigation";
 import { clearSession, getCurrentUser, startSession } from "@/lib/current-user";
 import {
   authenticateUser,
+  AccountBlockedError,
   EmailTakenError,
   InvalidCredentialsError,
   LoginLockedError,
   registerUser,
   updateUserProfile,
 } from "@/lib/users";
-import { parseLogin, parseProfile, parseRegistration, type FieldErrors } from "@/lib/validation";
+import { writeAudit } from "@/lib/audit";
+import { RateLimitError } from "@/lib/errors";
+import { consumeRateLimit } from "@/lib/rate-limit";
+import { parseLogin, parseProfile, parseRegistration } from "@/lib/validation";
 
 export type FormState = {
   message?: string;
-  fieldErrors?: FieldErrors;
+  fieldErrors?: Record<string, string>;
 };
 
 export async function registerAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -25,9 +29,14 @@ export async function registerAction(_state: FormState, formData: FormData): Pro
   }
 
   try {
+    consumeRateLimit(`register:${parsed.value.email}`, 5, 60 * 60 * 1000);
     const user = await registerUser(parsed.value);
+    writeAudit(user.id, "auth.register", "user", user.id, { role: user.role });
     await startSession(user.id);
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { message: "Слишком много попыток регистрации для этого адреса. Попробуйте позже." };
+    }
     if (error instanceof EmailTakenError) {
       return { fieldErrors: { email: "Этот адрес уже зарегистрирован" } };
     }
@@ -46,10 +55,14 @@ export async function loginAction(_state: FormState, formData: FormData): Promis
 
   try {
     const user = await authenticateUser(parsed.value.email, parsed.value.password);
+    writeAudit(user.id, "auth.login", "user", user.id, null);
     await startSession(user.id);
   } catch (error) {
     if (error instanceof LoginLockedError) {
       return { message: "Слишком много попыток входа. Подождите 15 минут и попробуйте снова." };
+    }
+    if (error instanceof AccountBlockedError) {
+      return { message: "Аккаунт заблокирован. Вход недоступен." };
     }
     if (error instanceof InvalidCredentialsError) {
       return { message: "Неверный адрес или пароль" };

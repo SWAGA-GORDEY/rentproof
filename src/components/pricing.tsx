@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { primaryButton, secondaryButton } from "@/components/styles";
 import { formatRubles } from "@/lib/catalog";
 import { plans, type PlanId } from "@/lib/plans";
@@ -75,6 +76,9 @@ export function Pricing() {
             ? `Тариф «${selectedPlan.name}» отмечен для сравнения. Списание средств не выполняется.`
             : "Тариф пока не отмечен. Кнопка только фиксирует выбор на странице."}
         </p>
+        <Link href="/pricing" className={`${secondaryButton} mt-4`}>
+          Открыть тарифы
+        </Link>
       </div>
     </section>
   );

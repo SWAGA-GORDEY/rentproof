@@ -14,6 +14,9 @@ export type PublicUser = {
   phone: string | null;
   city: string | null;
   createdAt: string;
+  isAdmin: boolean;
+  plan: "free" | "plus" | "pro";
+  blockedAt: string | null;
 };
 
 export class EmailTakenError extends Error {
@@ -30,6 +33,13 @@ export class LoginLockedError extends Error {
   }
 }
 
+export class AccountBlockedError extends Error {
+  constructor() {
+    super("Account blocked");
+    this.name = "AccountBlockedError";
+  }
+}
+
 export const LOGIN_ATTEMPT_LIMIT = 8;
 export const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -43,6 +53,9 @@ type UserRow = {
   city: string | null;
   created_at: string;
   updated_at: string;
+  is_admin: number;
+  blocked_at: string | null;
+  plan: string;
 };
 
 let dummyHashPromise: Promise<string> | null = null;
@@ -58,6 +71,9 @@ export async function registerUser(input: RegistrationInput): Promise<PublicUser
     phone: null,
     city: null,
     createdAt: now,
+    isAdmin: false,
+    plan: "free",
+    blockedAt: null,
   };
   const passwordHash = await hashPassword(input.password);
 
@@ -95,6 +111,10 @@ export async function authenticateUser(email: string, password: string): Promise
       new Date().toISOString(),
     );
     throw new InvalidCredentialsError();
+  }
+
+  if (row.blocked_at) {
+    throw new AccountBlockedError();
   }
 
   db.prepare("DELETE FROM login_attempts WHERE email = ?").run(normalized);
@@ -135,7 +155,11 @@ export function readSessionUser(token: string, nowIso: string): PublicUser | nul
     )
     .get(hashToken(token), nowIso) as UserRow | undefined;
 
-  return row ? toPublicUser(row) : null;
+  if (!row) {
+    return null;
+  }
+  const user = toPublicUser(row);
+  return user.blockedAt ? null : user;
 }
 
 export function deleteSession(token: string): void {
@@ -161,6 +185,20 @@ export function updateUserProfile(userId: string, input: ProfileInput): PublicUs
     throw new Error("Profile disappeared after update");
   }
   return toPublicUser(row);
+}
+
+export async function changePassword(userId: string, currentPassword: string, nextPassword: string): Promise<void> {
+  const db = getDb();
+  const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(userId) as
+    | { password_hash: string }
+    | undefined;
+  if (!row || !(await verifyPassword(currentPassword, row.password_hash))) {
+    throw new InvalidCredentialsError();
+  }
+  const nextHash = await hashPassword(nextPassword);
+  const now = new Date().toISOString();
+  db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(nextHash, now, userId);
+  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
 }
 
 export function passwordHashForEmail(email: string): string | null {
@@ -192,6 +230,7 @@ function toPublicUser(row: UserRow): PublicUser {
   if (row.role !== "landlord" && row.role !== "tenant") {
     throw new Error("Unknown role in database");
   }
+  const plan = row.plan === "plus" || row.plan === "pro" ? row.plan : "free";
   return {
     id: row.id,
     email: row.email,
@@ -200,6 +239,9 @@ function toPublicUser(row: UserRow): PublicUser {
     phone: row.phone,
     city: row.city,
     createdAt: row.created_at,
+    isAdmin: row.is_admin === 1,
+    plan,
+    blockedAt: row.blocked_at,
   };
 }
 

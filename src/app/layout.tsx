@@ -14,10 +14,19 @@ const unbounded = Unbounded({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "RentProof — аренда без риска",
   description:
-    "Платформа аренды оборудования, техники и имущества. В карточке видны состояние, залог и срок сделки.",
+    "Платформа аренды оборудования, техники и имущества. В карточке видны цена, залог, фотографии и условия.",
+  openGraph: {
+    title: "RentProof — аренда без риска",
+    description: "Каталог аренды, заявки и визуальная оценка состояния по фотографиям.",
+    locale: "ru_RU",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

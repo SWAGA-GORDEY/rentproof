@@ -2,12 +2,17 @@
   "name": "rentproof-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test-concurrency=1 --import ./tests/register-alias.mjs --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test-concurrency=1 --import ./tests/register-alias.mjs --test tests/*.test.ts",
+    "admin:bootstrap": "node --experimental-strip-types ./scripts/bootstrap-admin.mts"
   },
   "dependencies": {
     "next": "16.4.6",

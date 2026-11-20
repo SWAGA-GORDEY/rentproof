@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { PlaceListingLink } from "@/components/place-listing-link";
-import { pageLinks } from "@/lib/navigation";
+import { footerLinks } from "@/lib/navigation";
 
 export function Footer() {
   return (
@@ -9,17 +10,17 @@ export function Footer() {
         <div>
           <Logo tone="light" />
           <p className="mt-4 max-w-sm text-sm leading-6 text-white/75">
-            Аренда оборудования, техники и имущества. В карточке собраны состояние, залог и срок.
+            Аренда оборудования, техники и имущества. В карточке собраны цена, залог и состояние.
           </p>
         </div>
         <nav aria-label="Разделы в подвале">
           <p className="text-xs font-semibold tracking-[0.16em] text-white/60 uppercase">Разделы</p>
           <ul className="mt-4 space-y-2">
-            {pageLinks.map((link) => (
+            {footerLinks.map((link) => (
               <li key={link.href}>
-                <a href={link.href} className="text-sm text-white/85 transition hover:text-white">
+                <Link href={link.href} className="text-sm text-white/85 transition hover:text-white">
                   {link.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
@@ -28,26 +29,24 @@ export function Footer() {
           <p className="text-xs font-semibold tracking-[0.16em] text-white/60 uppercase">Сделка</p>
           <ul className="mt-4 space-y-2 text-sm text-white/85">
             <li>
-              <a href="#catalog" className="transition hover:text-white">
+              <Link href="/catalog" className="transition hover:text-white">
                 Смотреть объявления
-              </a>
+              </Link>
             </li>
             <li>
-              <PlaceListingLink className="text-sm text-white/85 transition hover:text-white">
-                Разместить объявление
-              </PlaceListingLink>
+              <PlaceListingLink className="text-sm text-white/85 transition hover:text-white">Разместить объявление</PlaceListingLink>
             </li>
             <li>
-              <a href="#assessment" className="transition hover:text-white">
-                Как устроена оценка
-              </a>
+              <Link href="/ai-assessment" className="transition hover:text-white">
+                Запустить визуальную оценку
+              </Link>
             </li>
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10">
         <p className="mx-auto max-w-6xl px-4 py-5 text-xs text-white/60 sm:px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          © 2026 RentProof
+          © 2026 RentProof. Расчёты и тарифы демонстрационные, платежи не списываются.
         </p>
       </div>
     </footer>

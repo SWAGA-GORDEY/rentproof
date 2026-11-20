@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { primaryButton } from "@/components/styles";
 
 type PlaceListingLinkProps = {
@@ -15,17 +16,8 @@ export function PlaceListingLink({
   onNavigate,
 }: PlaceListingLinkProps) {
   return (
-    <a
-      href="#razmestit"
-      className={className ?? primaryButton}
-      onClick={() => {
-        onNavigate?.();
-        if (window.location.hash === "#razmestit") {
-          window.dispatchEvent(new HashChangeEvent("hashchange"));
-        }
-      }}
-    >
+    <Link href="/listings/create" className={className ?? primaryButton} onClick={() => onNavigate?.()}>
       {children}
-    </a>
+    </Link>
   );
 }

@@ -7,7 +7,7 @@ import {
   readSessionUser,
   type PublicUser,
 } from "@/lib/users";
-import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/session-cookie";
+import { cookieIsSecure, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session-cookie";
 
 export async function getCurrentUser(): Promise<PublicUser | null> {
   await connection();
@@ -25,7 +25,7 @@ export async function requireUser(): Promise<PublicUser> {
 
 export async function startSession(userId: string): Promise<void> {
   const token = createSession(userId);
-  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(process.env.NODE_ENV === "production"));
+  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(cookieIsSecure()));
 }
 
 export async function clearSession(): Promise<void> {

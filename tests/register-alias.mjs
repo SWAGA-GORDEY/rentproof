@@ -5,7 +5,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 if (!process.env.RENTPROOF_DB_PATH) {
-  process.env.RENTPROOF_DB_PATH = path.join(mkdtempSync(path.join(tmpdir(), "rentproof-")), "test.sqlite");
+  const dir = mkdtempSync(path.join(tmpdir(), "rentproof-"));
+  process.env.RENTPROOF_DB_PATH = path.join(dir, "test.sqlite");
+  process.env.RENTPROOF_UPLOAD_DIR = path.join(dir, "uploads");
 }
 
 const srcRoot = path.resolve(import.meta.dirname, "../src");

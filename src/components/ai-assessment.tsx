@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const zones = [
   { name: "Стрела", note: "Рабочие следы, трещин нет", score: 84 },
   { name: "Люлька", note: "Ограждение целое", score: 91 },
@@ -78,11 +80,14 @@ export function AiAssessment() {
             ))}
           </ul>
           <p className="mt-6 text-sm leading-6 text-graphite">
-            Пригоден к аренде при допуске оператора и осмотре люльки до смены.
+            Образец вёрстки. Он не является заключением о исправности и не отправляется в модель.
           </p>
           <p className="mt-4 text-xs leading-5 text-muted">
-            Это образец отчёта в интерфейсе. Запрос к модели отсюда не отправляется.
+            Реальный разбор строится только по загруженным фотографиям на странице оценки.
           </p>
+          <Link href="/ai-assessment" className="mt-5 inline-flex text-sm font-semibold text-navy">
+            Открыть визуальную оценку
+          </Link>
         </article>
       </div>
     </section>

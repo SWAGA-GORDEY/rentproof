@@ -8,16 +8,44 @@ const frame = {
   strokeLinejoin: "round" as const,
 };
 
-export function ListingArt({ category }: { category: CategoryId }) {
+export function ListingArt({ category }: { category: string }) {
   return (
     <div className="relative aspect-[16/10] overflow-hidden bg-[#e7eef6]">
       <div className="blueprint absolute inset-0 opacity-80" />
       <svg viewBox="0 0 320 200" aria-hidden="true" className="absolute inset-0 h-full w-full">
         <circle cx="250" cy="42" r="46" fill="#d5e3f4" />
-        <Scene category={category} />
+        <Scene category={sceneFor(category)} />
       </svg>
     </div>
   );
+}
+
+function sceneFor(category: string): CategoryId {
+  if (category === "cars" || category === "motorcycles") {
+    return "transport";
+  }
+  if (category === "electronics" || category === "appliances") {
+    return "events";
+  }
+  if (category === "camping") {
+    return "space";
+  }
+  if (category === "other") {
+    return "special";
+  }
+  if (
+    category === "construction" ||
+    category === "tools" ||
+    category === "photo" ||
+    category === "transport" ||
+    category === "events" ||
+    category === "sport" ||
+    category === "space" ||
+    category === "special"
+  ) {
+    return category;
+  }
+  return "special";
 }
 
 function Scene({ category }: { category: CategoryId }) {
