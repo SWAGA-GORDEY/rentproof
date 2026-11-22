@@ -1,12 +1,12 @@
 import { Suspense } from "react";
-import { selectPlanAction } from "@/app/actions/social";
+import Link from "next/link";
 import { PasswordForm } from "@/components/simple-forms";
 import { secondaryButton } from "@/components/styles";
 import { listAuditForActor } from "@/lib/audit";
 import { requireUser } from "@/lib/current-user";
 import { formatDateRu } from "@/lib/format";
 import { mailChannelStatus } from "@/lib/notifications";
-import { billingStatus, plans } from "@/lib/plans";
+import { billingStatus } from "@/lib/plans";
 import { readPlan } from "@/lib/subscriptions";
 
 export const metadata = { title: "Настройки" };
@@ -30,16 +30,14 @@ async function Body() {
       <h1 className="font-display text-3xl font-semibold text-navy">Настройки</h1>
       <section className="rounded-3xl border border-line bg-white p-6">
         <h2 className="font-display text-xl font-semibold text-navy">Тариф</h2>
-        <p className="mt-2 text-sm text-muted">Сейчас: {plan.toUpperCase()}. Провайдер оплаты: {billing.provider}. Списания выключены.</p>
+        <p className="mt-2 text-sm text-muted">
+          Сейчас: {plan.toUpperCase()}. Провайдер: {billing.provider} · режим {billing.mode}
+          {billing.chargesEnabled ? (billing.fake ? " · fake-тест" : " · тест ЮKassa") : " · оплата не настроена"}.
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {plans.map((item) => (
-            <form key={item.id} action={selectPlanAction}>
-              <input type="hidden" name="plan" value={item.id} />
-              <button className={secondaryButton} type="submit" disabled={item.id === plan}>
-                {item.id === plan ? `${item.name} активен` : `Демо: ${item.name}`}
-              </button>
-            </form>
-          ))}
+          <Link href="/account/subscription" className={secondaryButton}>Моя подписка</Link>
+          <Link href="/pricing" className={secondaryButton}>Тарифы и оплата</Link>
+          <Link href="/account/payments" className={secondaryButton}>История платежей</Link>
         </div>
       </section>
       <section className="rounded-3xl border border-line bg-white p-6">

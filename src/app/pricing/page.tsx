@@ -1,18 +1,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { selectPlanAction } from "@/app/actions/social";
+import { startSubscriptionCheckoutAction } from "@/app/actions/payments";
 import { PageShell } from "@/components/page-shell";
 import { primaryButton, secondaryButton } from "@/components/styles";
 import { getCurrentUser } from "@/lib/current-user";
 import { formatRubles } from "@/lib/format";
 import { billingStatus, planAiLimit, planHistoryLimit, planListingLimit, plans } from "@/lib/plans";
-import { readPlan } from "@/lib/subscriptions";
-
 import { pageMetadata } from "@/lib/seo";
+import { readPlan } from "@/lib/subscriptions";
 
 export const metadata = pageMetadata({
   title: "Тарифы",
-  description: "Сравнение Free, Plus и Pro на RentProof. Оплата не подключена, деньги не списываются.",
+  description: "Free, Plus и Pro на RentProof. Оплата Plus/Pro через ЮKassa в тестовом режиме.",
   path: "/pricing",
 });
 
@@ -35,12 +34,22 @@ async function Body() {
       <div>
         <h1 className="font-display text-4xl font-semibold text-navy">Тарифы</h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-muted">
-          Все три плана работают в демонстрационном режиме. Провайдер «{billing.provider}» не настроен, списания выключены.
+          Free без оплаты. Plus и Pro оформляются через ЮKassa в режиме{" "}
+          <strong className="font-semibold text-ink">{billing.mode}</strong>
+          {billing.chargesEnabled
+            ? billing.fake
+              ? " (локальный fake-провайдер, без сети)."
+              : " (тестовый магазин)."
+            : ". Платёжный провайдер ещё не настроен — оплата недоступна."}
         </p>
       </div>
       <ul className="grid gap-4 lg:grid-cols-3">
         {plans.map((plan) => (
-          <li key={plan.id} id={plan.id} className={`flex flex-col rounded-3xl border p-6 ${"featured" in plan && plan.featured ? "border-navy bg-navy text-white" : "border-line bg-white"}`}>
+          <li
+            key={plan.id}
+            id={plan.id}
+            className={`flex flex-col rounded-3xl border p-6 ${"featured" in plan && plan.featured ? "border-navy bg-navy text-white" : "border-line bg-white"}`}
+          >
             <p className="text-sm font-semibold opacity-80">{plan.audience}</p>
             <h2 className="mt-2 font-display text-3xl font-semibold">{plan.name}</h2>
             <p className="mt-4 font-display text-4xl font-semibold">{formatRubles(plan.price)}</p>
@@ -54,15 +63,23 @@ async function Body() {
               <li>Записей истории: {planHistoryLimit(plan.id)}</li>
             </ul>
             <div className="mt-8">
-              {user ? (
-                <form action={selectPlanAction}>
+              {!user ? (
+                <Link href="/register" className={"featured" in plan && plan.featured ? secondaryButton : primaryButton}>
+                  Создать аккаунт
+                </Link>
+              ) : current === plan.id ? (
+                <button className={"featured" in plan && plan.featured ? secondaryButton : primaryButton} type="button" disabled>
+                  Текущий план
+                </button>
+              ) : plan.id === "free" || billing.chargesEnabled ? (
+                <form action={startSubscriptionCheckoutAction}>
                   <input type="hidden" name="plan" value={plan.id} />
-                  <button className={"featured" in plan && plan.featured ? secondaryButton : primaryButton} type="submit" disabled={current === plan.id}>
-                    {current === plan.id ? "Текущий план" : "Включить демонстрацию"}
+                  <button className={"featured" in plan && plan.featured ? secondaryButton : primaryButton} type="submit">
+                    {plan.id === "free" ? "Перейти на Free" : "Оплатить (тест)"}
                   </button>
                 </form>
               ) : (
-                <Link href="/register" className={"featured" in plan && plan.featured ? secondaryButton : primaryButton}>Создать аккаунт</Link>
+                <p className="text-sm opacity-80">Нужны тестовые ключи ЮKassa в Render.</p>
               )}
             </div>
           </li>

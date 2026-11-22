@@ -251,10 +251,142 @@ export function migrate(db: DatabaseSync): void {
     );
 
     CREATE INDEX IF NOT EXISTS request_limits_bucket ON request_limits(bucket, attempted_at);
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      purpose TEXT NOT NULL CHECK (purpose IN ('subscription', 'rental')),
+      status TEXT NOT NULL CHECK (status IN (
+        'pending', 'waiting_for_capture', 'succeeded', 'canceled', 'failed'
+      )),
+      amount_kopecks INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'RUB',
+      description TEXT NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'yookassa',
+      provider_payment_id TEXT UNIQUE,
+      confirmation_url TEXT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      plan_id TEXT,
+      rental_order_id TEXT,
+      booking_id TEXT,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      error_code TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      succeeded_at TEXT,
+      canceled_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS payments_user ON payments(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS payments_status ON payments(status, created_at);
+    CREATE INDEX IF NOT EXISTS payments_provider ON payments(provider_payment_id);
+    CREATE INDEX IF NOT EXISTS payments_rental ON payments(rental_order_id);
+
+    CREATE TABLE IF NOT EXISTS payment_events (
+      id TEXT PRIMARY KEY,
+      payment_id TEXT REFERENCES payments(id),
+      provider_event_id TEXT,
+      event_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      processing_result TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS payment_events_payment ON payment_events(payment_id, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS payment_events_provider_once
+      ON payment_events(provider_event_id)
+      WHERE provider_event_id IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS payment_idempotency (
+      idempotency_key TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      purpose TEXT NOT NULL,
+      payment_id TEXT REFERENCES payments(id),
+      request_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS rental_orders (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL UNIQUE REFERENCES bookings(id),
+      renter_id TEXT NOT NULL REFERENCES users(id),
+      owner_id TEXT NOT NULL REFERENCES users(id),
+      listing_id TEXT NOT NULL REFERENCES listings(id),
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      rental_amount_kopecks INTEGER NOT NULL,
+      platform_fee_kopecks INTEGER NOT NULL,
+      deposit_amount_kopecks INTEGER NOT NULL,
+      total_amount_kopecks INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'RUB',
+      payment_status TEXT NOT NULL CHECK (payment_status IN (
+        'unpaid', 'pending', 'paid', 'canceled', 'refunded', 'failed'
+      )),
+      rental_status TEXT NOT NULL CHECK (rental_status IN (
+        'created', 'awaiting_payment', 'paid', 'in_progress', 'completed', 'cancelled'
+      )),
+      deal_status TEXT NOT NULL DEFAULT 'not_applicable' CHECK (deal_status IN (
+        'not_applicable', 'payment_accepted', 'awaiting_deal_completion',
+        'refund_in_progress', 'payout_pending', 'paid_out', 'safe_deal_unavailable'
+      )),
+      provider_payment_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS rental_orders_renter ON rental_orders(renter_id, created_at);
+    CREATE INDEX IF NOT EXISTS rental_orders_owner ON rental_orders(owner_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS refunds (
+      id TEXT PRIMARY KEY,
+      payment_id TEXT NOT NULL REFERENCES payments(id),
+      rental_order_id TEXT REFERENCES rental_orders(id),
+      amount_kopecks INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'RUB',
+      status TEXT NOT NULL CHECK (status IN ('pending', 'succeeded', 'canceled', 'failed', 'unavailable')),
+      provider_refund_id TEXT UNIQUE,
+      reason TEXT,
+      created_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS refunds_payment ON refunds(payment_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS payouts (
+      id TEXT PRIMARY KEY,
+      rental_order_id TEXT NOT NULL REFERENCES rental_orders(id),
+      owner_id TEXT NOT NULL REFERENCES users(id),
+      amount_kopecks INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'RUB',
+      status TEXT NOT NULL CHECK (status IN (
+        'draft', 'pending_admin', 'submitted', 'succeeded', 'failed', 'unavailable'
+      )),
+      provider_payout_id TEXT UNIQUE,
+      admin_confirmed_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS payouts_order ON payouts(rental_order_id, created_at);
   `);
 
   if (!hasColumn(db, "listings", "search_text")) {
     db.exec("ALTER TABLE listings ADD COLUMN search_text TEXT NOT NULL DEFAULT ''");
+  }
+
+  const subscriptionColumns: Array<[string, string]> = [
+    ["status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["started_at", "TEXT"],
+    ["expires_at", "TEXT"],
+    ["payment_id", "TEXT"],
+    ["renewal_status", "TEXT NOT NULL DEFAULT 'off'"],
+    ["updated_at", "TEXT"],
+  ];
+  for (const [name, definition] of subscriptionColumns) {
+    if (!hasColumn(db, "subscriptions", name)) {
+      db.exec(`ALTER TABLE subscriptions ADD COLUMN ${name} ${definition}`);
+    }
   }
 }
 

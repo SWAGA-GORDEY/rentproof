@@ -1,7 +1,8 @@
 # RentProof on Render — Docker + persistent disk for SQLite/uploads.
 # Set secrets in the Render dashboard (never commit real keys):
 #   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL,
-#   NEXT_PUBLIC_SITE_URL, RENTPROOF_ADMIN_EMAIL, RENTPROOF_ADMIN_PASSWORD
+#   NEXT_PUBLIC_SITE_URL, RENTPROOF_ADMIN_EMAIL, RENTPROOF_ADMIN_PASSWORD,
+#   YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY (test shop only)
 
 services:
   - type: web
@@ -41,4 +42,22 @@ services:
       - key: RENTPROOF_ADMIN_EMAIL
         sync: false
       - key: RENTPROOF_ADMIN_PASSWORD
+        sync: false
+      - key: RENTPROOF_BILLING_PROVIDER
+        value: yookassa
+      - key: YOOKASSA_MODE
+        value: test
+      - key: YOOKASSA_API_URL
+        value: https://api.yookassa.ru/v3
+      - key: YOOKASSA_RETURN_URL
+        value: https://rentproof2.onrender.com/payments/return
+      - key: RENTPROOF_PLATFORM_FEE_BPS
+        value: "500"
+      - key: RENTPROOF_YOOKASSA_FAKE
+        value: "0"
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: YOOKASSA_WEBHOOK_SECRET
         sync: false

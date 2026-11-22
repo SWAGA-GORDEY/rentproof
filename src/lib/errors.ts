@@ -12,10 +12,26 @@ export class NotFoundError extends Error {
   }
 }
 
-export class ConflictError extends Error {
-  readonly code: "overlap" | "status" | "duplicate" | "window" | "own-listing" | "limit";
+export type ConflictCode =
+  | "overlap"
+  | "status"
+  | "duplicate"
+  | "window"
+  | "own-listing"
+  | "limit"
+  | "already_paid"
+  | "billing_disabled"
+  | "live_forbidden"
+  | "no_provider"
+  | "refund_unavailable"
+  | "amount"
+  | "booking_closed"
+  | "not_paid";
 
-  constructor(code: "overlap" | "status" | "duplicate" | "window" | "own-listing" | "limit") {
+export class ConflictError extends Error {
+  readonly code: ConflictCode;
+
+  constructor(code: ConflictCode) {
     super(code);
     this.name = "ConflictError";
     this.code = code;

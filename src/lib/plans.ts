@@ -16,7 +16,7 @@ export const plans = [
     id: "plus",
     name: "Plus",
     price: 1490,
-    period: "в месяц, демонстрация",
+    period: "в месяц, тест ЮKassa",
     audience: "Для регулярной сдачи",
     featured: true,
     features: [
@@ -30,7 +30,7 @@ export const plans = [
     id: "pro",
     name: "Pro",
     price: 3990,
-    period: "в месяц, демонстрация",
+    period: "в месяц, тест ЮKassa",
     audience: "Для активных арендодателей",
     features: [
       "До 100 активных объявлений",
@@ -65,10 +65,29 @@ export function planHistoryLimit(plan: PlanId): number {
   return LIMITS[plan].history;
 }
 
-export function billingStatus(): { provider: string; configured: boolean; chargesEnabled: false } {
+export function billingStatus(): {
+  provider: string;
+  mode: string;
+  configured: boolean;
+  chargesEnabled: boolean;
+  fake: boolean;
+} {
+  // Lazy import avoided: keep plans free of circular deps by reading env here and
+  // mirroring yookassa/billingProviderStatus for UI that only needs flags.
+  const provider = process.env.RENTPROOF_BILLING_PROVIDER?.trim() || "yookassa";
+  if (provider !== "yookassa" && provider !== "none") {
+    return { provider, mode: "off", configured: false, chargesEnabled: false, fake: false };
+  }
+  const mode = (process.env.YOOKASSA_MODE ?? "test").trim().toLowerCase() === "live" ? "live" : "test";
+  const fake = process.env.RENTPROOF_YOOKASSA_FAKE === "1" || (process.env.NODE_ENV === "test" && !process.env.YOOKASSA_SHOP_ID);
+  const configured =
+    mode !== "live" &&
+    (fake || Boolean(process.env.YOOKASSA_SHOP_ID?.trim() && process.env.YOOKASSA_SECRET_KEY?.trim()));
   return {
-    provider: process.env.RENTPROOF_BILLING_PROVIDER?.trim() || "none",
-    configured: false,
-    chargesEnabled: false,
+    provider: provider === "none" && !configured ? "none" : "yookassa",
+    mode,
+    configured,
+    chargesEnabled: configured && mode === "test",
+    fake,
   };
 }

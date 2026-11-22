@@ -10,6 +10,13 @@ if (!process.env.RENTPROOF_DB_PATH) {
   process.env.RENTPROOF_UPLOAD_DIR = path.join(dir, "uploads");
 }
 
+// Payments tests use in-memory fake ЮKassa — never hit the network.
+process.env.RENTPROOF_YOOKASSA_FAKE = "1";
+process.env.YOOKASSA_MODE = "test";
+process.env.RENTPROOF_BILLING_PROVIDER = "yookassa";
+process.env.NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://127.0.0.1:3000";
+
+
 const srcRoot = path.resolve(import.meta.dirname, "../src");
 
 registerHooks({
