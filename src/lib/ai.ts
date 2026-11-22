@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { aiVisionMaxTokens, consumeAiCallBudget } from "@/lib/ai-budget";
 import {
   aiConfigured,
   mapHttpStatus,
@@ -8,7 +9,7 @@ import {
 } from "@/lib/ai-provider";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
-import { ImageRejectedError, NotFoundError, PlanLimitError } from "@/lib/errors";
+import { ImageRejectedError, NotFoundError, PlanLimitError, RateLimitError } from "@/lib/errors";
 import { listAiImages, saveAiImage, type StoredImage } from "@/lib/images";
 import { planAiLimit, type PlanId } from "@/lib/plans";
 
@@ -56,12 +57,13 @@ export type AiReportRecord = {
   images: StoredImage[];
 };
 
-const SYSTEM_RULES = `Ты визуальный ассистент RentProof. Ответь одним JSON-объектом без markdown.
+const SYSTEM_RULES = `Ты визуальный ассистент RentProof. Ответь одним JSON-объектом без markdown. Все строки — на русском языке.
 Поля: objectDescription, visibleDamage, wear, scratches, cracks, features, photoQuality, uncertainty, extraPhotos, conclusion, observations, assumptions, score, confidence.
 Массивы — строки. score — целое 0..100 только по видимому. confidence — число 0..1.
-Не пиши, что предмет исправен, безопасен или пригоден к работе. Не ставь диагноз скрытым узлам.
-observations — только то, что видно. assumptions — только осторожные оговорки, не факты.
-Если кадра недостаточно, снижай confidence и перечисляй extraPhotos.`;
+Не выдумывай повреждения, которых нет на фото. Не пиши, что предмет исправен, безопасен или пригоден к работе. Не ставь диагноз скрытым узлам.
+observations — только видимые факты. assumptions — только осторожные предположения, явно не факты.
+Если кадров мало или они нечёткие, снижай confidence, заполняй uncertainty и extraPhotos.
+Не указывай цену аренды и не выдавай ориентир стоимости как гарантию. Рекомендации по аренде — только осторожные советы по осмотру/фото, без юридических и финансовых обещаний.`;
 
 export async function createAiReport(
   userId: string,
@@ -107,6 +109,8 @@ export async function createAiReport(
   }
 
   try {
+    // Paid provider call budget (hourly per user + monthly global). No automatic retries.
+    consumeAiCallBudget(userId);
     const result = await callVision(input, stored);
     getDb()
       .prepare(
@@ -117,6 +121,11 @@ export async function createAiReport(
       .run(result.score, result.confidence, JSON.stringify(result.body), result.model, id);
     writeAudit(userId, "ai.completed", "ai_report", id, { score: result.score });
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      getDb().prepare("UPDATE ai_reports SET status = 'failed', error_code = 'rate_limit' WHERE id = ?").run(id);
+      writeAudit(userId, "ai.rate_limited", "ai_report", id, null);
+      throw error;
+    }
     const code = error instanceof ProviderCallError ? error.code : "provider";
     getDb().prepare("UPDATE ai_reports SET status = 'failed', error_code = ? WHERE id = ?").run(code, id);
     writeAudit(userId, "ai.failed", "ai_report", id, { code });
@@ -199,6 +208,7 @@ async function callVision(
       body: JSON.stringify({
         model: config.model,
         temperature: 0.2,
+        max_tokens: aiVisionMaxTokens(),
         response_format: { type: "json_object" },
         messages: [
           {
