@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { refreshBanState } from "@/lib/bans";
 import { getDb } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-cookie";
@@ -18,6 +19,8 @@ export type PublicUser = {
   plan: "free" | "plus" | "pro";
   blockedAt: string | null;
   emailVerified: boolean;
+  staffRole: "owner" | "admin" | "moderator" | "support" | null;
+  displayName: string | null;
 };
 
 export class EmailTakenError extends Error {
@@ -58,6 +61,9 @@ type UserRow = {
   blocked_at: string | null;
   plan: string;
   email_verified?: number;
+  staff_role?: string | null;
+  display_name?: string | null;
+  staff_disabled_at?: string | null;
 };
 
 let dummyHashPromise: Promise<string> | null = null;
@@ -77,6 +83,8 @@ export async function registerUser(input: RegistrationInput): Promise<PublicUser
     plan: "free",
     blockedAt: null,
     emailVerified: false,
+    staffRole: null,
+    displayName: null,
   };
   const passwordHash = await hashPassword(input.password);
 
@@ -118,11 +126,15 @@ export async function authenticateUser(email: string, password: string): Promise
     throw new InvalidCredentialsError();
   }
 
-  if (row.blocked_at) {
+  refreshBanState(row.id);
+  const fresh = db.prepare("SELECT blocked_at FROM users WHERE id = ?").get(row.id) as { blocked_at: string | null };
+  if (fresh.blocked_at) {
     throw new AccountBlockedError();
   }
 
   db.prepare("DELETE FROM login_attempts WHERE email = ?").run(normalized);
+  const now = new Date().toISOString();
+  db.prepare("UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?").run(now, now, row.id);
   return toPublicUser(row);
 }
 
@@ -163,8 +175,15 @@ export function readSessionUser(token: string, nowIso: string): PublicUser | nul
   if (!row) {
     return null;
   }
-  const user = toPublicUser(row);
-  return user.blockedAt ? null : user;
+  refreshBanState(row.id);
+  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(row.id) as UserRow | undefined;
+  if (!fresh) return null;
+  const user = toPublicUser(fresh);
+  if (user.blockedAt) return null;
+  if (row.staff_disabled_at && row.staff_role) {
+    // Staff disabled still can use the product as a normal user unless blocked.
+  }
+  return user;
 }
 
 export function deleteSession(token: string): void {
@@ -263,6 +282,16 @@ function toPublicUser(row: UserRow): PublicUser {
     throw new Error("Unknown role in database");
   }
   const plan = row.plan === "plus" || row.plan === "pro" ? row.plan : "free";
+  const staffRole =
+    row.staff_role === "owner" ||
+    row.staff_role === "admin" ||
+    row.staff_role === "moderator" ||
+    row.staff_role === "support"
+      ? row.staff_role
+      : row.is_admin === 1
+        ? "admin"
+        : null;
+  const staffActive = Boolean(staffRole) && !row.staff_disabled_at;
   return {
     id: row.id,
     email: row.email,
@@ -271,10 +300,12 @@ function toPublicUser(row: UserRow): PublicUser {
     phone: row.phone,
     city: row.city,
     createdAt: row.created_at,
-    isAdmin: row.is_admin === 1,
+    isAdmin: staffActive,
     plan,
     blockedAt: row.blocked_at,
     emailVerified: row.email_verified !== 0,
+    staffRole,
+    displayName: row.display_name ?? null,
   };
 }
 

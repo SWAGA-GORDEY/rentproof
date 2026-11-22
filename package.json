@@ -13,7 +13,8 @@
     "lint": "eslint",
     "test": "node --experimental-strip-types --test-concurrency=1 --import ./tests/register-alias.mjs --test tests/*.test.ts",
     "test:ai": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/test-ai-connection.mts",
-    "admin:bootstrap": "node --experimental-strip-types ./scripts/bootstrap-admin.mts"
+    "admin:bootstrap": "node --experimental-strip-types ./scripts/bootstrap-admin.mts",
+    "owner:recover": "node --experimental-strip-types ./scripts/recover-owner.mts"
   },
   "dependencies": {
     "next": "16.4.6",

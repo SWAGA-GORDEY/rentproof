@@ -63,3 +63,13 @@ export class RateLimitError extends Error {
     this.name = "RateLimitError";
   }
 }
+
+export class FeatureBlockedError extends Error {
+  readonly feature: string;
+
+  constructor(feature: string) {
+    super("Feature blocked");
+    this.name = "FeatureBlockedError";
+    this.feature = feature;
+  }
+}

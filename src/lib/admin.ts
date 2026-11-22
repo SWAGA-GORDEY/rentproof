@@ -57,11 +57,16 @@ export function setBlocked(adminId: string, userId: string, blocked: boolean): v
   if (adminId === userId) {
     throw new ForbiddenError();
   }
-  const target = getDb().prepare("SELECT is_admin FROM users WHERE id = ?").get(userId) as { is_admin: number } | undefined;
+  const target = getDb().prepare("SELECT is_admin, staff_role FROM users WHERE id = ?").get(userId) as
+    | { is_admin: number; staff_role: string | null }
+    | undefined;
   if (!target) {
     throw new NotFoundError();
   }
-  if (target.is_admin === 1) {
+  if (target.staff_role === "owner") {
+    throw new ForbiddenError();
+  }
+  if (target.is_admin === 1 && target.staff_role !== "moderator" && target.staff_role !== "support") {
     throw new ForbiddenError();
   }
   const stamp = blocked ? new Date().toISOString() : null;
@@ -105,12 +110,10 @@ export function adminOverview() {
   };
 }
 
-export function promoteExistingUser(email: string): void {
-  const now = new Date().toISOString();
-  const result = getDb()
-    .prepare("UPDATE users SET is_admin = 1, blocked_at = NULL, updated_at = ? WHERE email = ?")
-    .run(now, email.trim().toLowerCase());
-  if (result.changes !== 1) {
-    throw new NotFoundError();
-  }
+/**
+ * @deprecated Privilege elevation must go through OWNER + assignStaff / OWNER_EMAIL.
+ * Kept only to fail closed if an old call site remains.
+ */
+export function promoteExistingUser(_email: string): void {
+  throw new ForbiddenError();
 }

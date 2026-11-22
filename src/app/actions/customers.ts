@@ -1,8 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { assertFeatureAllowed } from "@/lib/bans";
 import { requireUser } from "@/lib/current-user";
-import { PlanLimitError } from "@/lib/errors";
+import { FeatureBlockedError, PlanLimitError } from "@/lib/errors";
 import {
   addCustomerInteraction,
   archiveCustomer,
@@ -26,6 +27,14 @@ function readCustomerFields(formData: FormData) {
 export async function createCustomerAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   if (!user.emailVerified) redirect("/verify-email");
+  try {
+    assertFeatureAllowed(user.id, "crm");
+  } catch (error) {
+    if (error instanceof FeatureBlockedError) {
+      redirect("/account/customers?error=blocked");
+    }
+    throw error;
+  }
   const input = readCustomerFields(formData);
   if (input.name.length < 2) {
     redirect("/account/customers?error=name");

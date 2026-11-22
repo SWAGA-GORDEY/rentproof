@@ -472,7 +472,103 @@ export function migrate(db: DatabaseSync): void {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS customer_interactions_customer ON customer_interactions(customer_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS account_bans (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('permanent', 'temporary', 'feature')),
+      reason TEXT NOT NULL,
+      features_json TEXT,
+      created_by TEXT NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      expires_at TEXT,
+      lifted_at TEXT,
+      lifted_by TEXT REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS account_bans_user ON account_bans(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS account_bans_active ON account_bans(user_id, lifted_at, expires_at);
+
+    CREATE TABLE IF NOT EXISTS admin_notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_id TEXT NOT NULL REFERENCES users(id),
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS admin_notes_user ON admin_notes(user_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      category TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+      priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+      assignee_id TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS support_tickets_status ON support_tickets(status, updated_at);
+
+    CREATE TABLE IF NOT EXISTS support_ticket_messages (
+      id TEXT PRIMARY KEY,
+      ticket_id TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+      author_id TEXT NOT NULL REFERENCES users(id),
+      body TEXT NOT NULL,
+      internal INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS support_ticket_messages_ticket ON support_ticket_messages(ticket_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS platform_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_by TEXT REFERENCES users(id),
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS admin_notifications (
+      id TEXT PRIMARY KEY,
+      audience TEXT NOT NULL DEFAULT 'owner',
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      href TEXT,
+      read_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS admin_notifications_created ON admin_notifications(created_at);
   `);
+
+  const staffColumns: Array<[string, string]> = [
+    ["staff_role", "TEXT"],
+    ["display_name", "TEXT"],
+    ["staff_permissions", "TEXT"],
+    ["staff_disabled_at", "TEXT"],
+    ["last_login_at", "TEXT"],
+  ];
+  for (const [name, definition] of staffColumns) {
+    if (!hasColumn(db, "users", name)) {
+      db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+    }
+  }
+
+  const subscriptionGrantColumns: Array<[string, string]> = [
+    ["source_kind", "TEXT NOT NULL DEFAULT 'paid'"],
+    ["granted_by", "TEXT"],
+    ["grant_reason", "TEXT"],
+    ["grant_note", "TEXT"],
+  ];
+  for (const [name, definition] of subscriptionGrantColumns) {
+    if (!hasColumn(db, "subscriptions", name)) {
+      db.exec(`ALTER TABLE subscriptions ADD COLUMN ${name} ${definition}`);
+    }
+  }
+
+  // Legacy is_admin=1 without staff_role → admin (owner assigned via OWNER_EMAIL bootstrap).
+  db.prepare(
+    `UPDATE users SET staff_role = 'admin' WHERE is_admin = 1 AND (staff_role IS NULL OR staff_role = '')`,
+  ).run();
 }
 
 function hasColumn(db: DatabaseSync, table: string, column: string): boolean {

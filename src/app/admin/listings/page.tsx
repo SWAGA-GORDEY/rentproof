@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { moderateListingAction } from "@/app/actions/admin";
-import { requireAdmin } from "@/lib/current-user";
+import { dccModerateListingAction } from "@/app/actions/dcc";
+import { requireStaff } from "@/lib/current-user";
 import { fieldClass, secondaryButton } from "@/components/styles";
 import { getDb } from "@/lib/db";
 import { listingStatusLabel, type ListingStatus } from "@/lib/listings";
@@ -15,7 +15,7 @@ export default function AdminListingsPage() {
 }
 
 async function Body() {
-  await requireAdmin();
+  await requireStaff("listings.view");
   const rows = getDb()
     .prepare(
       `SELECT listings.id, listings.title, listings.status, listings.city, users.email
@@ -25,7 +25,8 @@ async function Body() {
     .all() as Array<{ id: string; title: string; status: ListingStatus; city: string; email: string }>;
   return (
     <div className="grid gap-4">
-      <h1 className="font-display text-3xl font-semibold text-navy">Модерация объявлений</h1>
+      <h1 className="font-display text-3xl font-semibold text-navy">Listings</h1>
+      <p className="text-sm text-muted">Автопубликация сохранена. Здесь — модерация, снятие и восстановление.</p>
       <ul className="grid gap-3">
         {rows.map((listing) => (
           <li key={listing.id} className="rounded-3xl border border-line bg-white p-5">
@@ -33,11 +34,12 @@ async function Body() {
             <h2 className="mt-1 font-display text-xl font-semibold text-navy">{listing.title}</h2>
             <p className="text-sm text-muted">{listing.email}</p>
             <Link href={`/listings/${listing.id}`} className="mt-2 inline-block text-sm font-semibold text-navy">Открыть</Link>
-            <form action={moderateListingAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+            <form action={dccModerateListingAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
               <input type="hidden" name="listingId" value={listing.id} />
               <input name="reason" placeholder="Причина, если отклоняете" className={fieldClass} />
               <button name="decision" value="published" className={secondaryButton} type="submit">Опубликовать</button>
               <button name="decision" value="rejected" className={secondaryButton} type="submit">Отклонить</button>
+              <button name="decision" value="archived" className={secondaryButton} type="submit">Снять</button>
             </form>
           </li>
         ))}

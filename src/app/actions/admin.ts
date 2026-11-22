@@ -1,27 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { assertAdmin, setBlocked } from "@/lib/admin";
-import { getCurrentUser } from "@/lib/current-user";
+import { setBlocked } from "@/lib/admin";
+import { requireStaff } from "@/lib/current-user";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { moderateListing } from "@/lib/listings";
 import { resolveComplaint } from "@/lib/complaints";
 import { setReviewVisibility } from "@/lib/reviews";
 
-async function admin() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-  if (!user.isAdmin) {
-    redirect("/account");
-  }
-  assertAdmin(user);
-  return user;
-}
-
 export async function moderateListingAction(formData: FormData): Promise<void> {
-  const user = await admin();
+  const { user } = await requireStaff("listings.moderate");
   const listingId = String(formData.get("listingId") ?? "");
   const decision = String(formData.get("decision") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
@@ -43,9 +31,9 @@ export async function moderateListingAction(formData: FormData): Promise<void> {
 }
 
 export async function blockUserAction(formData: FormData): Promise<void> {
-  const user = await admin();
-  const userId = String(formData.get("userId") ?? "");
   const blocked = String(formData.get("blocked") ?? "") === "1";
+  const { user } = await requireStaff(blocked ? "users.ban" : "users.unban");
+  const userId = String(formData.get("userId") ?? "");
   try {
     setBlocked(user.id, userId, blocked);
   } catch (error) {
@@ -58,7 +46,7 @@ export async function blockUserAction(formData: FormData): Promise<void> {
 }
 
 export async function resolveComplaintAction(formData: FormData): Promise<void> {
-  const user = await admin();
+  const { user } = await requireStaff("listings.moderate");
   const complaintId = String(formData.get("complaintId") ?? "");
   const status = String(formData.get("status") ?? "");
   const resolution = String(formData.get("resolution") ?? "").trim();
@@ -77,7 +65,7 @@ export async function resolveComplaintAction(formData: FormData): Promise<void> 
 }
 
 export async function hideReviewAction(formData: FormData): Promise<void> {
-  const user = await admin();
+  const { user } = await requireStaff("listings.moderate");
   const reviewId = String(formData.get("reviewId") ?? "");
   const status = String(formData.get("status") ?? "") === "hidden" ? "hidden" : "published";
   try {
