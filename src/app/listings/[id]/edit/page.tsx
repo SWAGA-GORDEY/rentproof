@@ -13,7 +13,10 @@ import { getOwnedListing, listingStatusLabel } from "@/lib/listings";
 
 type Params = { id: string };
 
-export const metadata = { title: "Редактирование — RentProof" };
+export const metadata = {
+  title: "Редактирование",
+  robots: { index: false, follow: false },
+};
 
 export default function EditListingPage({ params }: { params: Promise<Params> }) {
   return (

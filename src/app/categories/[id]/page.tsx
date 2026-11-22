@@ -57,12 +57,12 @@ const SEO_BLURBS: Record<string, { lead: string; body: string }> = {
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;
   if (!isCategoryId(id)) {
-    return { title: "Категория — RentProof" };
+    return { title: "Категория" };
   }
   const category = categories.find((item) => item.id === id)!;
   const blurb = SEO_BLURBS[id];
   return pageMetadata({
-    title: `${category.name} — аренда | RentProof`,
+    title: `${category.name} — аренда`,
     description: blurb?.lead ?? category.description,
     path: `/categories/${id}`,
   });

@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/current-user";
 import { formatRubles } from "@/lib/format";
 import { listOwnerListings, listingStatusLabel } from "@/lib/listings";
 
-export const metadata = { title: "Мои объявления — RentProof" };
+export const metadata = { title: "Мои объявления" };
 
 export default function MyListingsPage() {
   return (

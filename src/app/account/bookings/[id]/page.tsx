@@ -12,7 +12,7 @@ import { formatDateRu, formatRubles } from "@/lib/format";
 
 type Params = { id: string };
 
-export const metadata = { title: "Заявка — RentProof" };
+export const metadata = { title: "Заявка" };
 
 export default function BookingDetailsPage({ params }: { params: Promise<Params> }) {
   return (

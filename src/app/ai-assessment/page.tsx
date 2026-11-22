@@ -10,6 +10,7 @@ import { readPlan } from "@/lib/subscriptions";
 export const metadata = {
   title: "Визуальная оценка",
   description: "Разбор загруженных фотографий. Это не техническая экспертиза.",
+  alternates: { canonical: "/ai-assessment" },
   robots: { index: false, follow: false },
 };
 

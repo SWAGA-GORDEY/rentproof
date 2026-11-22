@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/current-user";
 import { formatDateRu, formatRubles } from "@/lib/format";
 import { readPlan } from "@/lib/subscriptions";
 
-export const metadata = { title: "Бронирования — RentProof" };
+export const metadata = { title: "Бронирования" };
 
 export default function BookingsPage() {
   return (
