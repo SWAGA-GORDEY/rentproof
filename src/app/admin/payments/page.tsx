@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/current-user";
+import { requireStaff } from "@/lib/current-user";
 import { getDb } from "@/lib/db";
 import { formatKopecks } from "@/lib/money";
 import { formatDateRu } from "@/lib/format";
@@ -17,7 +17,7 @@ export default function AdminPaymentsPage() {
 }
 
 async function Body() {
-  await requireAdmin();
+  await requireStaff("finance.view");
   const payments = getDb()
     .prepare(
       `SELECT payments.*, users.email AS email

@@ -57,11 +57,16 @@ export function setBlocked(adminId: string, userId: string, blocked: boolean): v
   if (adminId === userId) {
     throw new ForbiddenError();
   }
-  const target = getDb().prepare("SELECT is_admin FROM users WHERE id = ?").get(userId) as { is_admin: number } | undefined;
+  const target = getDb().prepare("SELECT is_admin, staff_role FROM users WHERE id = ?").get(userId) as
+    | { is_admin: number; staff_role: string | null }
+    | undefined;
   if (!target) {
     throw new NotFoundError();
   }
-  if (target.is_admin === 1) {
+  if (target.staff_role === "owner") {
+    throw new ForbiddenError();
+  }
+  if (target.is_admin === 1 && target.staff_role !== "moderator" && target.staff_role !== "support") {
     throw new ForbiddenError();
   }
   const stamp = blocked ? new Date().toISOString() : null;
