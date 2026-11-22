@@ -68,7 +68,7 @@ export async function registerAction(_state: FormState, formData: FormData): Pro
     if (marketing && marketingDoc) recordConsent(user.id, "marketing", marketingDoc);
 
     writeAudit(user.id, "auth.register", "user", user.id, { role: user.role });
-    await issueEmailVerification(user.id, user.email);
+    await issueEmailVerification(user.id, user.email, user.name);
     await startSession(user.id);
   } catch (error) {
     if (error instanceof RateLimitError) {
@@ -152,7 +152,7 @@ export async function resendVerificationAction(): Promise<FormState> {
     redirect("/account");
   }
   try {
-    await issueEmailVerification(user.id, user.email);
+    await issueEmailVerification(user.id, user.email, user.name);
     return { message: verificationMailNote() };
   } catch (error) {
     if (error instanceof RateLimitError) {
@@ -206,21 +206,27 @@ export async function requestPasswordResetAction(_state: FormState, formData: Fo
 }
 
 export async function completePasswordResetAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const code = String(formData.get("code") ?? "").trim();
   const token = String(formData.get("token") ?? "").trim();
-  if (!token || token.length < 32) {
-    return { message: "Ссылка сброса недействительна." };
+  const secret = code || token;
+  if (!secret) {
+    return { message: "Введите код из письма." };
+  }
+  if (code && !email) {
+    return { fieldErrors: { email: "Укажите email" } };
   }
   const parsed = parseNewPassword(formData);
   if (!parsed.ok) {
     return { fieldErrors: parsed.fieldErrors };
   }
   try {
-    const result = await completePasswordReset(token, parsed.value);
+    const result = await completePasswordReset(secret, parsed.value, email || undefined);
     if (!result.ok) {
       const messages: Record<string, string> = {
-        invalid: "Ссылка недействительна",
-        used: "Ссылка уже использована",
-        expired: "Срок действия ссылки истёк",
+        invalid: "Код или ссылка недействительны",
+        used: "Код уже использован",
+        expired: "Срок действия кода истёк",
       };
       return { message: messages[result.reason] ?? "Не удалось сбросить пароль" };
     }

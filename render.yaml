@@ -39,6 +39,13 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      # Mail (Resend). Set secrets in dashboard — never commit keys.
+      - key: MAIL_DRIVER
+        value: resend
+      - key: MAIL_FROM
+        value: RentProof <onboarding@resend.dev>
+      - key: RESEND_API_KEY
+        sync: false
       # RENTPROOF_ADMIN_* deprecated/ignored — OWNER via OWNER_EMAIL only
       - key: OWNER_EMAIL
         sync: false

@@ -7,9 +7,13 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+export default function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; email?: string }>;
+}) {
   return (
-    <AuthShell title="Новый пароль" lede="Задайте новый пароль по одноразовой ссылке из письма.">
+    <AuthShell title="Новый пароль" lede="Введите email, код из письма и новый пароль. Код действует 1 час.">
       <Suspense fallback={<p className="text-sm text-muted">Загрузка…</p>}>
         <Body searchParams={searchParams} />
       </Suspense>
@@ -17,10 +21,7 @@ export default function ResetPasswordPage({ searchParams }: { searchParams: Prom
   );
 }
 
-async function Body({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-  const { token } = await searchParams;
-  if (!token) {
-    return <p className="text-sm text-accent">Ссылка неполная. Запросите сброс пароля снова.</p>;
-  }
-  return <ResetPasswordForm token={token} />;
+async function Body({ searchParams }: { searchParams: Promise<{ token?: string; email?: string }> }) {
+  const { token = "", email = "" } = await searchParams;
+  return <ResetPasswordForm email={email} token={token} />;
 }

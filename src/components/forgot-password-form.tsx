@@ -19,8 +19,15 @@ export function ForgotPasswordForm() {
       </label>
       {state.message ? <p className="text-sm text-muted">{state.message}</p> : null}
       <button type="submit" className={primaryButton} disabled={pending}>
-        {pending ? "Отправляем…" : "Отправить ссылку"}
+        {pending ? "Отправляем…" : "Отправить код"}
       </button>
+      <p className="text-sm text-muted">
+        Придёт письмо с одноразовым кодом. Затем откройте{" "}
+        <Link href="/reset-password" className="font-semibold text-navy">
+          страницу сброса пароля
+        </Link>
+        .
+      </p>
       <p className="text-sm text-muted">
         <Link href="/login" className="font-semibold text-navy">
           Вернуться ко входу
