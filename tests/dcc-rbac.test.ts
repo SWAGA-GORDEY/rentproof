@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-subscriptions";
 import { hasPermission, loadStaffProfile } from "@/lib/rbac";
 import { promoteExistingUser } from "@/lib/admin";
+import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import { registerUser } from "@/lib/users";
 import { enforceSubscriptionExpiry } from "@/lib/subscription-lifecycle";
 
@@ -101,6 +102,19 @@ describe("dcc rbac and owner", () => {
     assert.equal(hasPermission(loadStaffProfile(adminUser.id)!, "admins.manage"), false);
     assert.equal(hasPermission(loadStaffProfile(adminUser.id)!, "subscriptions.grant"), true);
     assert.throws(() => promoteExistingUser(email("nobody")), ForbiddenError);
+
+    // Legacy password-based admin bootstrap must not elevate anyone.
+    const legacy = await registerUser({ name: "Legacy", email: email("legacy"), password, role: "tenant" });
+    process.env.RENTPROOF_ADMIN_EMAIL = legacy.email;
+    process.env.RENTPROOF_ADMIN_PASSWORD = "legacy-admin-password-should-be-ignored";
+    await ensureAdminFromEnv();
+    assert.equal(loadStaffProfile(legacy.id)?.staffRole, null);
+    assert.equal(
+      (getDb().prepare(`SELECT is_admin FROM users WHERE id = ?`).get(legacy.id) as { is_admin: number }).is_admin,
+      0,
+    );
+    delete process.env.RENTPROOF_ADMIN_EMAIL;
+    delete process.env.RENTPROOF_ADMIN_PASSWORD;
   });
 
   it("bans and unbans regular users for real", async () => {

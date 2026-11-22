@@ -1,30 +1,16 @@
-import { randomUUID } from "node:crypto";
-import { getDb } from "@/lib/db";
-import { hashPassword } from "@/lib/password";
-
+/**
+ * Legacy admin bootstrap via RENTPROOF_ADMIN_EMAIL / RENTPROOF_ADMIN_PASSWORD.
+ *
+ * Disabled for Developer Control Center: OWNER is bound only through OWNER_EMAIL
+ * (existing account, no password in env). Creating or elevating admins from a
+ * password env var is a privilege-escalation risk and is intentionally a no-op.
+ */
 export async function ensureAdminFromEnv(): Promise<void> {
-  const email = process.env.RENTPROOF_ADMIN_EMAIL?.trim().toLowerCase() ?? "";
-  const password = process.env.RENTPROOF_ADMIN_PASSWORD ?? "";
-  if (!email.includes("@") || password.length < 10) {
-    return;
+  const legacyEmail = process.env.RENTPROOF_ADMIN_EMAIL?.trim() ?? "";
+  const legacyPassword = process.env.RENTPROOF_ADMIN_PASSWORD ?? "";
+  if (legacyEmail || legacyPassword) {
+    console.warn(
+      "ensure_admin_from_env_disabled: use OWNER_EMAIL for OWNER bootstrap; RENTPROOF_ADMIN_* is ignored",
+    );
   }
-
-  const db = getDb();
-  const now = new Date().toISOString();
-  const existing = db.prepare("SELECT id, is_admin FROM users WHERE email = ?").get(email) as
-    | { id: string; is_admin: number }
-    | undefined;
-
-  if (existing) {
-    if (existing.is_admin !== 1) {
-      db.prepare("UPDATE users SET is_admin = 1, blocked_at = NULL, updated_at = ? WHERE id = ?").run(now, existing.id);
-    }
-    return;
-  }
-
-  const passwordHash = await hashPassword(password);
-  db.prepare(
-    `INSERT INTO users (id, email, password_hash, name, role, phone, city, created_at, updated_at, is_admin, plan)
-     VALUES (?, ?, ?, 'Администратор', 'landlord', NULL, NULL, ?, ?, 1, 'pro')`,
-  ).run(randomUUID(), email, passwordHash, now, now);
 }

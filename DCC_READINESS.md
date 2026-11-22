@@ -12,7 +12,7 @@ Audit covered RBAC/OWNER, admin APIs, privilege escalation, bans, staff, subscri
 |------|--------|
 | RBAC + OWNER protection | Pass — OWNER via `OWNER_EMAIL`; cannot ban/demote OWNER; staff mgmt OWNER-only |
 | Admin API gates | Pass — DCC + legacy admin actions use `requireStaff(permission)` |
-| Self-escalation | Pass — `admins.manage` OWNER-only; assignable perms strip that cap; `promoteExistingUser` fail-closed |
+| Self-escalation | Pass — `admins.manage` OWNER-only; assignable perms strip that cap; `promoteExistingUser` + legacy `RENTPROOF_ADMIN_*` fail-closed |
 | User bans | Pass — permanent/temporary/feature; expired temps auto-cleared; feature bans enforced on listings/bookings/ai/crm |
 | ADMIN assign/revoke | Pass — OWNER-only lib + UI |
 | PLUS/PRO grant/extend/revoke | Pass — `admin_granted` / promotional / referral; no fake payments |

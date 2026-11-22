@@ -11,6 +11,8 @@ In Render Dashboard → rentproof → Environment, set:
 
 Do **not** put passwords into env vars for OWNER bootstrap.
 
+`RENTPROOF_ADMIN_EMAIL` / `RENTPROOF_ADMIN_PASSWORD` are **deprecated and ignored**. They must not be used; OWNER comes only from `OWNER_EMAIL` on an existing account.
+
 Keep `RENTPROOF_PAYMENTS_ENABLED=0`.
 
 ## 2. First bind

@@ -39,10 +39,7 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: RENTPROOF_ADMIN_EMAIL
-        sync: false
-      - key: RENTPROOF_ADMIN_PASSWORD
-        sync: false
+      # RENTPROOF_ADMIN_* deprecated/ignored — OWNER via OWNER_EMAIL only
       - key: OWNER_EMAIL
         sync: false
       - key: OWNER_RECOVERY_TOKEN
