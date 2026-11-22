@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { AiForm } from "@/components/simple-forms";
 import { PageShell } from "@/components/page-shell";
-import { aiConfigured, listAiReports } from "@/lib/ai";
+import { listAiReports, publicAiStatus } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/current-user";
 import { formatDateRu } from "@/lib/format";
 import { readPlan } from "@/lib/subscriptions";
@@ -24,17 +24,19 @@ export default function AiPage() {
 
 async function Body() {
   const user = await getCurrentUser();
-  const configured = aiConfigured();
+  const status = publicAiStatus();
   const reports = user ? listAiReports(user.id, readPlan(user.id)) : [];
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <div>
         <h1 className="font-display text-4xl font-semibold text-navy">Визуальная оценка</h1>
         <p className="mt-4 text-sm leading-7 text-muted">
-          Модуль смотрит загруженные изображения. Он описывает видимые признаки и не утверждает, что предмет исправен. Ключ модели хранится только на сервере.
+          Модуль смотрит загруженные изображения на сервере через TokenLavka-совместимый API. Браузер не читает и не хранит ключ модели.
         </p>
         <p className="mt-3 text-sm leading-6 text-graphite">
-          {configured ? "Ключ модели задан, анализ пойдёт в настроенный API." : "Ключ модели не задан. Запрос сохранится со статусом «нужна настройка», без подставного текста анализа."}
+          {status.configured
+            ? `Сервер видит ключ (${status.keySource}). Запросы идут на ${status.baseUrl}, модель ${status.model}.`
+            : "На сервере нет OPENAI_API_KEY (и TOKENLAVKA_KEY). Браузер ключ увидеть не может — задайте секрет в окружении хостинга (Render) и перезапустите сервис. Запрос сохранится со статусом «нужна настройка», без подставного текста анализа."}
         </p>
         {!user ? <Link href="/login" className="mt-4 inline-block text-sm font-semibold text-navy">Войдите, чтобы запустить анализ</Link> : <div className="mt-6"><AiForm /></div>}
       </div>

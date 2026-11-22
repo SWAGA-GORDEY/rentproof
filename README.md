@@ -31,9 +31,13 @@ npm run admin:bootstrap
 
 При старте сервера те же переменные создают администратора, если такого адреса ещё нет. Пароль уже существующего администратора при перезапуске не перезаписывается.
 
-## AI
+## AI (TokenLavka)
 
-Ключ хранится только на сервере: `OPENAI_API_KEY`, при необходимости `OPENAI_BASE_URL` и `OPENAI_VISION_MODEL`. Если ключ пуст, отчёт сохраняется со статусом «нужна настройка».
+Ключ хранится только на сервере (`process.env`): `OPENAI_API_KEY` (или `TOKENLAVKA_KEY`), `OPENAI_BASE_URL=https://tokenlavka.com/v1`, `OPENAI_MODEL` (алиас `OPENAI_VISION_MODEL`). Браузер и localStorage ключ не читают. Если ключ пуст, отчёт сохраняется со статусом «нужна настройка».
+
+```bash
+npm run test:ai
+```
 
 ## Данные
 

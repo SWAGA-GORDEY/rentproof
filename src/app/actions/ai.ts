@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/actions/auth";
-import { createAiReport } from "@/lib/ai";
+import { createAiReport, testAiConnection, type AiConnectionProbe } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/current-user";
 import { ImageRejectedError, PlanLimitError, RateLimitError } from "@/lib/errors";
 import { parseAiForm, readUploads } from "@/lib/forms";
@@ -42,6 +42,15 @@ export async function analyzeAction(_state: FormState, formData: FormData): Prom
     console.error("ai action failed");
     return { message: "Не удалось сохранить запрос на анализ." };
   }
+}
+
+/** Admin-only live probe. Never returns the API key. */
+export async function testAiConnectionAction(): Promise<AiConnectionProbe | { ok: false; message: string }> {
+  const user = await getCurrentUser();
+  if (!user?.isAdmin) {
+    return { ok: false, message: "Нужны права администратора." };
+  }
+  return testAiConnection();
 }
 
 function isRedirect(error: unknown): boolean {

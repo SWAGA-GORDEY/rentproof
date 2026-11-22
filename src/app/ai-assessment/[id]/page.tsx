@@ -45,12 +45,24 @@ async function Body({ params }: { params: Promise<Params> }) {
       {report.status === "unavailable" ? (
         <section className="rounded-3xl border border-line bg-white p-6 text-sm leading-6 text-graphite">
           <h2 className="font-display text-xl font-semibold text-navy">Нужна настройка модели</h2>
-          <p className="mt-3">Переменная OPENAI_API_KEY на сервере пуста, поэтому анализ изображений не запускался. Статический текст вместо разбора не подставляется.</p>
-          <p className="mt-3">Как подключить модель, описано в docs/AI_SETUP.md. После настройки повторите загрузку фотографий.</p>
+          <p className="mt-3">
+            На сервере не задан API-ключ (OPENAI_API_KEY или TOKENLAVKA_KEY), поэтому анализ не запускался.
+            Ключ читается только из process.env на бэкенде — браузер и localStorage его не используют.
+          </p>
+          <p className="mt-3">
+            Задайте секреты на Render: OPENAI_API_KEY, OPENAI_BASE_URL=https://tokenlavka.com/v1, OPENAI_MODEL (или OPENAI_VISION_MODEL).
+            Подробности — в docs/AI_SETUP.md. После настройки повторите загрузку фотографий.
+          </p>
         </section>
       ) : null}
       {report.status === "failed" ? (
-        <p className="rounded-3xl border border-line bg-white p-6 text-sm text-graphite">Поставщик модели не вернул пригодный отчёт. Повторите запрос или проверьте ключ и имя модели.</p>
+        <section className="rounded-3xl border border-line bg-white p-6 text-sm text-graphite">
+          <p>Поставщик модели не вернул пригодный отчёт.</p>
+          {report.errorCode ? (
+            <p className="mt-2 text-muted">Код диагностики: {report.errorCode} (значение ключа никогда не показывается).</p>
+          ) : null}
+          <p className="mt-2">Проверьте ключ, OPENAI_BASE_URL (должен быть https://tokenlavka.com/v1) и имя модели. Администратор может вызвать POST /api/ai/connection.</p>
+        </section>
       ) : null}
       {report.status === "completed" && report.body ? (
         <section className="grid gap-4 rounded-3xl border border-line bg-white p-6">
