@@ -15,9 +15,9 @@ Branch: `cursor/seo-google-yandex-f2a8`
 
 ## 2. Merge status
 
-- Merge attempted after push of favicon/OG commit (see timeline at bottom of this file).
-- If merge succeeds: master includes SEO + brand assets.
-- If blocked: document reason under «Actions requiring owner».
+- **Merged** into `master` at 2026-11-22T13:30:28Z (UTC) / 2026-11-22 18:30 Asia/Yekaterinburg
+- Merge commit: `534e97194ca61046bb89cfa1e8b468f5baf11ce6`
+- PR URL: https://github.com/SWAGA-GORDEY/rentproof/pull/3
 
 ## 3. Render redeploy
 
