@@ -85,18 +85,24 @@ describe("marketplace", () => {
   });
 
   it("stores an unavailable AI report when the key is missing", async () => {
-    const previous = process.env.OPENAI_API_KEY;
+    const previousOpenAi = process.env.OPENAI_API_KEY;
+    const previousToken = process.env.TOKENLAVKA_KEY;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.TOKENLAVKA_KEY;
     assert.equal(aiConfigured(), false);
     const user = await registerUser({ name: "Алина Кадр", email: uniqueEmail("ai"), password, role: "tenant" });
     const reportId = await createAiReport(user.id, { objectType: "Шуруповёрт", description: "Корпус и патрон на трёх кадрах.", knownDefects: "Царапина на крышке" }, [png]);
     const report = getAiReport(user.id, false, reportId);
     assert.equal(report?.status, "unavailable");
+    assert.equal(report?.errorCode, "missing_api_key");
     assert.equal(report?.body, null);
     assert.equal(report?.score, null);
     assert.equal(getAiReport(user.id, false, "missing-report"), null);
-    if (previous) {
-      process.env.OPENAI_API_KEY = previous;
+    if (previousOpenAi) {
+      process.env.OPENAI_API_KEY = previousOpenAi;
+    }
+    if (previousToken) {
+      process.env.TOKENLAVKA_KEY = previousToken;
     }
   });
 

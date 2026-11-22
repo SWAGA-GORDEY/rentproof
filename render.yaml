@@ -1,0 +1,40 @@
+# RentProof on Render — Docker + persistent disk for SQLite/uploads.
+# Set secrets in the Render dashboard (never commit real keys):
+#   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL,
+#   NEXT_PUBLIC_SITE_URL, RENTPROOF_ADMIN_EMAIL, RENTPROOF_ADMIN_PASSWORD
+
+services:
+  - type: web
+    name: rentproof
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/ai/connection
+    disk:
+      name: rentproof-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: HOSTNAME
+        value: "0.0.0.0"
+      - key: RENTPROOF_DB_PATH
+        value: /data/rentproof.sqlite
+      - key: RENTPROOF_UPLOAD_DIR
+        value: /data/uploads
+      - key: RENTPROOF_COOKIE_SECURE
+        value: "1"
+      - key: OPENAI_BASE_URL
+        value: https://tokenlavka.com/v1
+      - key: OPENAI_MODEL
+        value: gpt-6-luna
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: RENTPROOF_ADMIN_EMAIL
+        sync: false
+      - key: RENTPROOF_ADMIN_PASSWORD
+        sync: false

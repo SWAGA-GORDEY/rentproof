@@ -1,9 +1,23 @@
 import { randomUUID } from "node:crypto";
+import {
+  aiConfigured,
+  mapHttpStatus,
+  providerErrorCode,
+  readAiProviderConfig,
+  sanitizeAiDiagnostic,
+} from "@/lib/ai-provider";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import { ImageRejectedError, NotFoundError, PlanLimitError } from "@/lib/errors";
 import { listAiImages, saveAiImage, type StoredImage } from "@/lib/images";
 import { planAiLimit, type PlanId } from "@/lib/plans";
+
+export {
+  aiConfigured,
+  publicAiStatus,
+  testAiConnection,
+  type AiConnectionProbe,
+} from "@/lib/ai-provider";
 
 export const AI_DISCLAIMER =
   "Это визуальная оценка по загруженным фотографиям, а не техническая экспертиза. По снимку нельзя установить, что предмет полностью исправен. Видимые признаки отделены от предположений.";
@@ -48,10 +62,6 @@ const SYSTEM_RULES = `Ты визуальный ассистент RentProof. О
 Не пиши, что предмет исправен, безопасен или пригоден к работе. Не ставь диагноз скрытым узлам.
 observations — только то, что видно. assumptions — только осторожные оговорки, не факты.
 Если кадра недостаточно, снижай confidence и перечисляй extraPhotos.`;
-
-export function aiConfigured(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY?.trim());
-}
 
 export async function createAiReport(
   userId: string,
@@ -106,9 +116,11 @@ export async function createAiReport(
       )
       .run(result.score, result.confidence, JSON.stringify(result.body), result.model, id);
     writeAudit(userId, "ai.completed", "ai_report", id, { score: result.score });
-  } catch {
-    getDb().prepare("UPDATE ai_reports SET status = 'failed', error_code = 'provider' WHERE id = ?").run(id);
-    writeAudit(userId, "ai.failed", "ai_report", id, null);
+  } catch (error) {
+    const code = error instanceof ProviderCallError ? error.code : "provider";
+    getDb().prepare("UPDATE ai_reports SET status = 'failed', error_code = ? WHERE id = ?").run(code, id);
+    writeAudit(userId, "ai.failed", "ai_report", id, { code });
+    console.error("ai provider failed:", sanitizeAiDiagnostic(error instanceof Error ? error.message : "unknown"));
   }
   return id;
 }
@@ -151,58 +163,93 @@ type ReportRow = {
   created_at: string;
 };
 
+class ProviderCallError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "ProviderCallError";
+    this.code = code;
+  }
+}
+
 async function callVision(
   input: { objectType: string; description: string; knownDefects: string | null },
   files: Array<{ mime: string; bytes: Uint8Array }>,
 ): Promise<{ score: number; confidence: number; body: AiReportBody; model: string }> {
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (!key) {
-    throw new Error("missing key");
+  const config = readAiProviderConfig();
+  if (!config.apiKey) {
+    throw new ProviderCallError("missing_api_key", "missing key");
   }
-  const base = (process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1").replace(/\/$/, "");
-  const model = process.env.OPENAI_VISION_MODEL?.trim() || "gpt-4o-mini";
   const prompt = [
     SYSTEM_RULES,
     `Тип объекта: ${input.objectType}`,
     `Описание пользователя: ${input.description}`,
     `Известные дефекты со слов пользователя: ${input.knownDefects || "не указаны"}`,
   ].join("\n");
-  const response = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...files.map((file) => ({
-              type: "image_url",
-              image_url: { url: `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}` },
-            })),
-          ],
-        },
-      ],
-    }),
-    signal: AbortSignal.timeout(45_000),
-  });
-  if (!response.ok) {
-    throw new Error("provider status");
+
+  let response: Response;
+  try {
+    response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              ...files.map((file) => ({
+                type: "image_url",
+                image_url: { url: `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}` },
+              })),
+            ],
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+  } catch (error) {
+    const timeout =
+      error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    throw new ProviderCallError(
+      providerErrorCode(null, timeout ? "timeout" : "network"),
+      sanitizeAiDiagnostic(timeout ? "provider timeout" : error instanceof Error ? error.message : "network"),
+    );
   }
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
+
+  if (!response.ok) {
+    const raw = sanitizeAiDiagnostic(await response.text().catch(() => ""));
+    throw new ProviderCallError(
+      providerErrorCode(response.status, "http"),
+      sanitizeAiDiagnostic(mapHttpStatus(response.status, raw)),
+    );
+  }
+
+  let payload: { choices?: Array<{ message?: { content?: string } }> };
+  try {
+    payload = (await response.json()) as typeof payload;
+  } catch {
+    throw new ProviderCallError(providerErrorCode(response.status, "parse"), "provider parse");
+  }
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("empty");
+    throw new ProviderCallError(providerErrorCode(response.status, "empty"), "empty");
   }
-  return { ...parseModelJson(content), model };
+  try {
+    return { ...parseModelJson(content), model: config.model };
+  } catch (error) {
+    throw new ProviderCallError(
+      providerErrorCode(null, "parse"),
+      sanitizeAiDiagnostic(error instanceof Error ? error.message : "parse"),
+    );
+  }
 }
 
 function parseModelJson(content: string): { score: number; confidence: number; body: AiReportBody } {
