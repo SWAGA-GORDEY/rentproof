@@ -41,11 +41,11 @@ export async function listingStatusAction(formData: FormData): Promise<void> {
   const user = await actor();
   const listingId = String(formData.get("listingId") ?? "");
   const status = String(formData.get("status") ?? "");
-  if (status !== "draft" && status !== "pending" && status !== "archived") {
+  if (status !== "draft" && status !== "pending" && status !== "published" && status !== "archived") {
     redirect("/account/listings");
   }
   try {
-    setOwnerListingStatus(user.id, listingId, status);
+    setOwnerListingStatus(user.id, listingId, status as "draft" | "pending" | "published" | "archived");
   } catch (error) {
     if (error instanceof ForbiddenError || error instanceof NotFoundError) {
       redirect("/account/listings?error=forbidden");

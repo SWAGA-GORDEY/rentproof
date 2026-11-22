@@ -6,6 +6,7 @@ import { ConflictError, ForbiddenError, NotFoundError, PlanLimitError } from "@/
 import { foldSearch, todayUtc } from "@/lib/format";
 import { listListingImages, type StoredImage } from "@/lib/images";
 import { notifyUser } from "@/lib/notifications";
+import { listingAutoPublishEnabled } from "@/lib/plan-config";
 import { planListingLimit, type PlanId } from "@/lib/plans";
 
 export type ListingStatus = "draft" | "pending" | "published" | "rejected" | "archived";
@@ -108,7 +109,7 @@ export function createListing(ownerId: string, input: ListingInput, submit: bool
   assertPlanCapacity(ownerId);
   const id = randomUUID();
   const now = new Date().toISOString();
-  const status: ListingStatus = submit ? "pending" : "draft";
+  const status: ListingStatus = submit ? (listingAutoPublishEnabled() ? "published" : "pending") : "draft";
   getDb()
     .prepare(
       `INSERT INTO listings (
@@ -142,9 +143,12 @@ export function createListing(ownerId: string, input: ListingInput, submit: bool
   if (submit) {
     notifyUser(ownerId, {
       kind: "listing",
-      title: "Объявление отправлено на модерацию",
-      body: `«${input.title}» ожидает проверки.`,
-      href: `/listings/${id}/edit`,
+      title: status === "published" ? "Объявление опубликовано" : "Объявление отправлено на модерацию",
+      body:
+        status === "published"
+          ? `«${input.title}» уже в каталоге. Вы можете снять его с публикации в любой момент.`
+          : `«${input.title}» ожидает проверки.`,
+      href: status === "published" ? `/catalog/${id}` : `/listings/${id}/edit`,
     });
   }
   return id;
@@ -155,7 +159,20 @@ export function updateListing(actorId: string, listingId: string, input: Listing
   if (current.status === "archived") {
     throw new ConflictError("status");
   }
-  const resolved: ListingStatus = submit || current.status === "published" ? "pending" : current.status === "rejected" ? "draft" : current.status;
+  const auto = listingAutoPublishEnabled();
+  let resolved: ListingStatus;
+  if (submit) {
+    resolved = auto ? "published" : "pending";
+  } else if (current.status === "published" && auto) {
+    // Keep live listings published after edit when auto-publish is on.
+    resolved = "published";
+  } else if (current.status === "published") {
+    resolved = "pending";
+  } else if (current.status === "rejected") {
+    resolved = "draft";
+  } else {
+    resolved = current.status;
+  }
   const now = new Date().toISOString();
   getDb()
     .prepare(
@@ -186,22 +203,29 @@ export function updateListing(actorId: string, listingId: string, input: Listing
       actorId,
     );
   writeAudit(actorId, "listing.update", "listing", listingId, { status: resolved });
-  if (current.status === "published") {
+  if (submit || resolved !== current.status) {
     notifyUser(actorId, {
       kind: "listing",
-      title: "Объявление снова на модерации",
-      body: `Изменения в «${input.title}» сняли публикацию до проверки.`,
-      href: `/listings/${listingId}/edit`,
+      title: resolved === "published" ? "Объявление обновлено в каталоге" : "Статус объявления изменён",
+      body: `«${input.title}» — ${resolved}.`,
+      href: resolved === "published" ? `/catalog/${listingId}` : `/listings/${listingId}/edit`,
     });
   }
 }
 
-export function setOwnerListingStatus(actorId: string, listingId: string, status: "draft" | "pending" | "archived"): void {
+export function setOwnerListingStatus(
+  actorId: string,
+  listingId: string,
+  status: "draft" | "pending" | "published" | "archived",
+): void {
   const current = requireOwned(actorId, listingId);
-  if (status === "pending" && current.status === "archived") {
+  if ((status === "pending" || status === "published") && current.status === "archived") {
     throw new ConflictError("status");
   }
-  if (status === "pending") {
+  if (status === "published" && !listingAutoPublishEnabled()) {
+    throw new ConflictError("status");
+  }
+  if (status === "pending" || status === "published") {
     assertPlanCapacity(actorId, listingId);
   }
   const now = new Date().toISOString();
@@ -214,9 +238,16 @@ export function setOwnerListingStatus(actorId: string, listingId: string, status
   writeAudit(actorId, "listing.status", "listing", listingId, { status });
   notifyUser(actorId, {
     kind: "listing",
-    title: status === "archived" ? "Объявление в архиве" : status === "pending" ? "Объявление на модерации" : "Объявление скрыто",
+    title:
+      status === "archived"
+        ? "Объявление в архиве"
+        : status === "published"
+          ? "Объявление снова в каталоге"
+          : status === "pending"
+            ? "Объявление на модерации"
+            : "Объявление скрыто",
     body: `Статус «${current.title}» обновлён.`,
-    href: `/listings/${listingId}/edit`,
+    href: status === "published" ? `/catalog/${listingId}` : `/listings/${listingId}/edit`,
   });
 }
 

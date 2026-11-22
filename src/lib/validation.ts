@@ -111,6 +111,31 @@ export function roleLabel(role: UserRole): string {
   return role === "landlord" ? "Арендодатель" : "Арендатор";
 }
 
+export function parseNewPassword(formData: FormData): { ok: true; value: string } | { ok: false; fieldErrors: FieldErrors } {
+  const password = readText(formData, "password");
+  const passwordConfirm = readText(formData, "passwordConfirm");
+  const fieldErrors: FieldErrors = {};
+  const passwordError = passwordProblem(password);
+  if (passwordError) {
+    fieldErrors.password = passwordError;
+  }
+  if (password !== passwordConfirm) {
+    fieldErrors.passwordConfirm = "Пароли не совпадают";
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false, fieldErrors };
+  }
+  return { ok: true, value: password };
+}
+
+export function parseEmailOnly(formData: FormData): { ok: true; value: string } | { ok: false; fieldErrors: FieldErrors } {
+  const email = readText(formData, "email").toLowerCase();
+  if (!EMAIL_PATTERN.test(email) || email.length > 254) {
+    return { ok: false, fieldErrors: { email: "Укажите корректный адрес почты" } };
+  }
+  return { ok: true, value: email };
+}
+
 function passwordProblem(password: string): string | null {
   if (password.length < 10 || password.length > 128) {
     return "Пароль: от 10 до 128 символов";

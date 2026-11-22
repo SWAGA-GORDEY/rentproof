@@ -13,6 +13,7 @@ export const footerLinks = [
   { href: "/faq", label: "Вопросы" },
   { href: "/contacts", label: "Контакты" },
   { href: "/pricing", label: "Тарифы" },
+  { href: "/documents", label: "Документы" },
   { href: "/privacy", label: "Конфиденциальность" },
   { href: "/terms", label: "Соглашение" },
 ] as const;
@@ -22,9 +23,15 @@ export const accountLinks = [
   { href: "/account/profile", label: "Профиль" },
   { href: "/account/listings", label: "Объявления" },
   { href: "/account/bookings", label: "Бронирования" },
+  { href: "/account/customers", label: "Клиенты" },
+  { href: "/account/history", label: "История" },
+  { href: "/account/analytics", label: "Аналитика" },
   { href: "/account/payments", label: "Платежи" },
   { href: "/account/subscription", label: "Подписка" },
   { href: "/account/favorites", label: "Избранное" },
   { href: "/account/reviews", label: "Отзывы" },
+  { href: "/ai-assessment", label: "ИИ-помощник" },
+  { href: "/documents", label: "Документы" },
+  { href: "/account/security", label: "Безопасность" },
   { href: "/account/settings", label: "Настройки" },
 ] as const;
