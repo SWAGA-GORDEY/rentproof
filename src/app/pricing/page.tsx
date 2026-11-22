@@ -8,10 +8,13 @@ import { formatRubles } from "@/lib/format";
 import { billingStatus, planAiLimit, planHistoryLimit, planListingLimit, plans } from "@/lib/plans";
 import { readPlan } from "@/lib/subscriptions";
 
-export const metadata = {
-  title: "Тарифы — RentProof",
-  description: "Сравнение Free, Plus и Pro. Оплата не подключена, деньги не списываются.",
-};
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Тарифы",
+  description: "Сравнение Free, Plus и Pro на RentProof. Оплата не подключена, деньги не списываются.",
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (

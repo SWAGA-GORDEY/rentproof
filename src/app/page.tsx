@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AiAssessment } from "@/components/ai-assessment";
 import { AppHeader } from "@/components/app-header";
@@ -6,6 +7,20 @@ import { Footer } from "@/components/footer";
 import { Hero } from "@/components/hero";
 import { HomeCatalog, HomeCatalogFallback } from "@/components/home-catalog";
 import { Pricing } from "@/components/pricing";
+import { SeoTopics } from "@/components/seo-topics";
+import { pageMetadata } from "@/lib/seo";
+
+const home = pageMetadata({
+  title: "RentProof — аренда оборудования и техники",
+  description:
+    "Каталог аренды оборудования, строительной техники и инструмента. Цена, залог, фото и визуальная оценка состояния.",
+  path: "/",
+});
+
+export const metadata: Metadata = {
+  ...home,
+  title: { absolute: "RentProof — аренда оборудования и техники" },
+};
 
 export default function Home() {
   return (
@@ -25,6 +40,7 @@ export default function Home() {
         <Benefits />
         <AiAssessment />
         <Pricing />
+        <SeoTopics />
       </main>
       <Footer />
     </>

@@ -7,10 +7,13 @@ import { fieldClass, primaryButton, secondaryButton } from "@/components/styles"
 import { categories, isCategoryId } from "@/lib/categories";
 import { listCities, searchListings, type CatalogFilters } from "@/lib/listings";
 
-export const metadata = {
-  title: "Каталог — RentProof",
-  description: "Поиск объявлений аренды по категории, городу, цене и доступности.",
-};
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Каталог аренды оборудования и техники",
+  description: "Поиск объявлений аренды по категории, городу, цене и доступности. Строительная техника, инструмент и имущество.",
+  path: "/catalog",
+});
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -35,8 +38,21 @@ async function CatalogBody({ searchParams }: { searchParams: Promise<Query> }) {
   return (
     <div className="grid gap-8">
       <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">Каталог</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-muted">Опубликованные объявления из базы. Демонстрационные карточки отмечены.</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">Каталог аренды</h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted">
+          Опубликованные объявления оборудования, строительной техники и инструмента. Демонстрационные карточки отмечены.
+        </p>
+        <nav aria-label="Категории" className="mt-4 flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              href={`/categories/${category.id}`}
+              className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-navy transition hover:border-navy/40"
+            >
+              {category.name}
+            </Link>
+          ))}
+        </nav>
       </div>
       <form method="get" action="/catalog" className="grid gap-3 rounded-3xl border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-sm font-medium text-ink">

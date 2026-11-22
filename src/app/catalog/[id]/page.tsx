@@ -9,6 +9,7 @@ import { isFavorite } from "@/lib/favorites";
 import { listConfirmedRanges } from "@/lib/bookings";
 import { getPublishedListing } from "@/lib/listings";
 import { listListingReviews } from "@/lib/reviews";
+import { listingJsonLd, listingMetadata } from "@/lib/seo";
 
 type Params = { id: string };
 
@@ -17,12 +18,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { id } = await params;
   const listing = getPublishedListing(id);
   if (!listing) {
-    return { title: "Объявление — RentProof" };
+    return { title: "Объявление не найдено", robots: { index: false, follow: false } };
   }
-  return {
-    title: `${listing.title} — RentProof`,
-    description: listing.description.slice(0, 160),
-  };
+  return listingMetadata(listing);
 }
 
 export default function CatalogItemPage({ params }: { params: Promise<Params> }) {
@@ -43,13 +41,17 @@ async function Body({ params }: { params: Promise<Params> }) {
     notFound();
   }
   const user = await getCurrentUser();
+  const jsonLd = listingJsonLd(listing);
   return (
-    <ListingDetails
-      listing={listing}
-      ranges={listConfirmedRanges(id)}
-      reviews={listListingReviews(id)}
-      user={user}
-      favorite={user ? isFavorite(user.id, id) : false}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <ListingDetails
+        listing={listing}
+        ranges={listConfirmedRanges(id)}
+        reviews={listListingReviews(id)}
+        user={user}
+        favorite={user ? isFavorite(user.id, id) : false}
+      />
+    </>
   );
 }
