@@ -41,6 +41,65 @@ export function RegisterForm() {
         </label>
         {state.fieldErrors?.role ? <p className="text-sm text-accent">{state.fieldErrors.role}</p> : null}
       </fieldset>
+
+      <fieldset className="grid gap-3 rounded-2xl border border-line bg-mist/40 p-4">
+        <legend className="px-1 text-sm font-semibold text-ink">Согласия</legend>
+        <Consent
+          name="consentOffer"
+          error={state.fieldErrors?.consentOffer}
+          label={
+            <>
+              Принимаю{" "}
+              <Link href="/documents/offer" className="font-semibold text-navy underline" target="_blank">
+                публичную оферту
+              </Link>{" "}
+              и{" "}
+              <Link href="/documents/terms" className="font-semibold text-navy underline" target="_blank">
+                условия использования
+              </Link>
+              .
+            </>
+          }
+        />
+        <Consent
+          name="consentPrivacy"
+          error={state.fieldErrors?.consentPrivacy}
+          label={
+            <>
+              Ознакомился с{" "}
+              <Link href="/documents/privacy" className="font-semibold text-navy underline" target="_blank">
+                политикой обработки персональных данных
+              </Link>
+              .
+            </>
+          }
+        />
+        <Consent
+          name="consentPersonalData"
+          error={state.fieldErrors?.consentPersonalData}
+          label={
+            <>
+              Даю отдельное{" "}
+              <Link href="/documents/personal-data-consent" className="font-semibold text-navy underline" target="_blank">
+                согласие на обработку персональных данных
+              </Link>
+              .
+            </>
+          }
+        />
+        <label className="flex items-start gap-2 text-sm text-ink">
+          <input type="checkbox" name="consentMarketing" className="mt-1" />
+          <span>
+            Согласен на{" "}
+            <Link href="/documents/marketing-consent" className="font-semibold text-navy underline" target="_blank">
+              рекламные рассылки
+            </Link>{" "}
+            (необязательно).
+          </span>
+        </label>
+        <p className="text-xs text-muted">Документы сейчас в статусе DRAFT до утверждения владельцем сервиса.</p>
+      </fieldset>
+
       {state.message ? (
         <p role="alert" className="text-sm text-accent">
           {state.message}
@@ -56,6 +115,26 @@ export function RegisterForm() {
         </Link>
       </p>
     </form>
+  );
+}
+
+function Consent({
+  name,
+  label,
+  error,
+}: {
+  name: string;
+  label: React.ReactNode;
+  error?: string;
+}) {
+  return (
+    <div className="grid gap-1">
+      <label className="flex items-start gap-2 text-sm text-ink">
+        <input type="checkbox" name={name} className="mt-1" />
+        <span>{label}</span>
+      </label>
+      {error ? <p className="text-sm text-accent">{error}</p> : null}
+    </div>
   );
 }
 
@@ -79,16 +158,17 @@ function TextField({
     <label className="grid gap-1.5 text-sm font-medium text-ink">
       {label}
       <input
+        className={fieldClass}
         name={name}
         type={type}
         autoComplete={autoComplete}
         aria-invalid={Boolean(error)}
         aria-describedby={errorId}
-        className={fieldClass}
+        required
       />
-      {hint ? <span className="font-normal text-muted">{hint}</span> : null}
+      {hint ? <span className="text-xs font-normal text-muted">{hint}</span> : null}
       {error ? (
-        <span id={errorId} className="font-normal text-accent">
+        <span id={errorId} className="text-sm font-normal text-accent">
           {error}
         </span>
       ) : null}

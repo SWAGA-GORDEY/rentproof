@@ -9,9 +9,13 @@ import {
 } from "@/lib/users";
 import { cookieIsSecure, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session-cookie";
 
-export async function getCurrentUser(): Promise<PublicUser | null> {
+export async function getSessionToken(): Promise<string | null> {
   await connection();
-  const token = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
+  return (await cookies()).get(SESSION_COOKIE)?.value ?? null;
+}
+
+export async function getCurrentUser(): Promise<PublicUser | null> {
+  const token = (await getSessionToken()) ?? "";
   return readSessionUser(token, new Date().toISOString());
 }
 

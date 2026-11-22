@@ -17,6 +17,7 @@ export type PublicUser = {
   isAdmin: boolean;
   plan: "free" | "plus" | "pro";
   blockedAt: string | null;
+  emailVerified: boolean;
 };
 
 export class EmailTakenError extends Error {
@@ -56,6 +57,7 @@ type UserRow = {
   is_admin: number;
   blocked_at: string | null;
   plan: string;
+  email_verified?: number;
 };
 
 let dummyHashPromise: Promise<string> | null = null;
@@ -74,13 +76,16 @@ export async function registerUser(input: RegistrationInput): Promise<PublicUser
     isAdmin: false,
     plan: "free",
     blockedAt: null,
+    emailVerified: false,
   };
   const passwordHash = await hashPassword(input.password);
 
   try {
     db.prepare(
-      `INSERT INTO users (id, email, password_hash, name, role, phone, city, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+      `INSERT INTO users (
+        id, email, password_hash, name, role, phone, city, created_at, updated_at,
+        email_verified, email_verified_at, account_status, plan, is_admin
+      ) VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, NULL, 'active', 'free', 0)`,
     ).run(user.id, user.email, passwordHash, user.name, user.role, now, now);
   } catch (error) {
     if (isUniqueEmailError(error)) {
@@ -201,6 +206,33 @@ export async function changePassword(userId: string, currentPassword: string, ne
   db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
 }
 
+export async function beginEmailChange(userId: string, nextEmail: string): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  try {
+    db.prepare(
+      `UPDATE users SET email = ?, email_verified = 0, email_verified_at = NULL, updated_at = ? WHERE id = ?`,
+    ).run(nextEmail, now, userId);
+  } catch (error) {
+    if (isUniqueEmailError(error)) {
+      throw new EmailTakenError();
+    }
+    throw error;
+  }
+}
+
+export async function deleteUserAccount(userId: string, password: string): Promise<void> {
+  const db = getDb();
+  const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(userId) as
+    | { password_hash: string }
+    | undefined;
+  if (!row || !(await verifyPassword(password, row.password_hash))) {
+    throw new InvalidCredentialsError();
+  }
+  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+}
+
 export function passwordHashForEmail(email: string): string | null {
   const row = getDb().prepare("SELECT password_hash FROM users WHERE email = ?").get(email) as
     | { password_hash: string }
@@ -242,6 +274,7 @@ function toPublicUser(row: UserRow): PublicUser {
     isAdmin: row.is_admin === 1,
     plan,
     blockedAt: row.blocked_at,
+    emailVerified: row.email_verified !== 0,
   };
 }
 

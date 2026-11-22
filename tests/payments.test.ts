@@ -47,7 +47,7 @@ describe("yookassa test payments", () => {
     const paid = await fakeSucceedPayment(created.paymentId);
     assert.equal(paid.status, "succeeded");
     assert.equal(readPlan(user.id), "plus");
-    assert.equal(planPriceKopecks("plus"), 149_000);
+    assert.equal(planPriceKopecks("plus"), 29_900);
 
     const dupWebhook = await handleYooKassaWebhook({
       event: "payment.succeeded",
@@ -86,7 +86,7 @@ describe("yookassa test payments", () => {
     assert.equal(synced.status, "pending");
     assert.equal(readPlan(user.id), "free");
 
-    getDb().prepare(`UPDATE payments SET amount_kopecks = ?, currency = 'USD' WHERE id = ?`).run(149_000, payment.id);
+    getDb().prepare(`UPDATE payments SET amount_kopecks = ?, currency = 'USD' WHERE id = ?`).run(29_900, payment.id);
     const syncedFx = await syncPayment(payment.id);
     assert.equal(syncedFx.status, "pending");
   });

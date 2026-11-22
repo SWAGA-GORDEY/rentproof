@@ -388,6 +388,91 @@ export function migrate(db: DatabaseSync): void {
       db.exec(`ALTER TABLE subscriptions ADD COLUMN ${name} ${definition}`);
     }
   }
+
+  // Existing accounts default to verified=1 so production users are not locked out.
+  // New registrations set email_verified=0 explicitly in registerUser.
+  const userAuthColumns: Array<[string, string]> = [
+    ["email_verified", "INTEGER NOT NULL DEFAULT 1"],
+    ["email_verified_at", "TEXT"],
+    ["account_status", "TEXT NOT NULL DEFAULT 'active'"],
+  ];
+  for (const [name, definition] of userAuthColumns) {
+    if (!hasColumn(db, "users", name)) {
+      db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+    }
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      verified_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS email_verifications_user ON email_verifications(user_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS password_resets_user ON password_resets(user_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS legal_documents (
+      id TEXT PRIMARY KEY,
+      doc_type TEXT NOT NULL,
+      version TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body_md TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('draft', 'published', 'retired')),
+      created_at TEXT NOT NULL,
+      published_at TEXT,
+      UNIQUE(doc_type, version)
+    );
+
+    CREATE TABLE IF NOT EXISTS user_consents (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      consent_type TEXT NOT NULL,
+      document_id TEXT REFERENCES legal_documents(id),
+      document_version TEXT NOT NULL,
+      accepted_at TEXT,
+      revoked_at TEXT,
+      consent_status TEXT NOT NULL CHECK (consent_status IN ('accepted', 'revoked', 'pending')),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS user_consents_user ON user_consents(user_id, consent_type, created_at);
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      email TEXT,
+      phone TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS customers_owner ON customers(owner_id, updated_at);
+    CREATE INDEX IF NOT EXISTS customers_owner_search ON customers(owner_id, name);
+
+    CREATE TABLE IF NOT EXISTS customer_interactions (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS customer_interactions_customer ON customer_interactions(customer_id, created_at);
+  `);
 }
 
 function hasColumn(db: DatabaseSync, table: string, column: string): boolean {

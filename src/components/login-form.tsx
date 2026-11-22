@@ -29,6 +29,11 @@ export function LoginForm() {
         {pending ? "Входим…" : "Войти"}
       </button>
       <p className="text-sm text-muted">
+        <Link href="/forgot-password" className="font-semibold text-navy">
+          Забыли пароль?
+        </Link>
+      </p>
+      <p className="text-sm text-muted">
         Нет учётной записи?{" "}
         <Link href="/register" className="font-semibold text-navy">
           Зарегистрироваться

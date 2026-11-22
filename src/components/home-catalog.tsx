@@ -38,7 +38,14 @@ export async function HomeCatalog() {
           ))}
         </ul>
         {result.items.length === 0 ? (
-          <p className="mt-8 text-sm text-muted">В каталоге пока нет опубликованных объявлений.</p>
+          <div className="mt-8 rounded-3xl border border-dashed border-line bg-white p-6">
+            <p className="text-sm text-muted">
+              Каталог пуст — демонстрационные объявления отключены. Опубликуйте своё оборудование, и оно сразу появится здесь.
+            </p>
+            <Link href="/listings/create" className={`${secondaryButton} mt-4`}>
+              Разместить объявление
+            </Link>
+          </div>
         ) : (
           <ul className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {result.items.slice(0, 6).map((listing) => (

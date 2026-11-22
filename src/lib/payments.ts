@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { parseYookassaAmountToKopecks, rublesToKopecks } from "@/lib/money";
 import { notifyUser } from "@/lib/notifications";
-import { isPlanId, type PlanId, plans } from "@/lib/plans";
+import { isPlanId, type PlanId, planPriceRub } from "@/lib/plans";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import {
   billingProviderStatus,
@@ -54,11 +54,7 @@ type PaymentRow = {
 };
 
 export function planPriceKopecks(planId: PlanId): number {
-  const plan = plans.find((item) => item.id === planId);
-  if (!plan) {
-    throw new Error("unknown_plan");
-  }
-  return rublesToKopecks(plan.price);
+  return rublesToKopecks(planPriceRub(planId));
 }
 
 export function paymentsConfigured(): boolean {
