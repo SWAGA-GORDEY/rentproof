@@ -1,4 +1,5 @@
 import { ConsoleMailAdapter } from "@/lib/mail/console-adapter";
+import { ResendMailAdapter } from "@/lib/mail/resend-adapter";
 import { SmtpMailAdapter } from "@/lib/mail/smtp-adapter";
 import type { MailAdapter, MailMessage } from "@/lib/mail/types";
 
@@ -6,11 +7,19 @@ export type { MailAdapter, MailMessage } from "@/lib/mail/types";
 
 export function getMailAdapter(): MailAdapter {
   const driver = (process.env.MAIL_DRIVER ?? "auto").trim().toLowerCase();
+
   if (driver === "console") {
     return new ConsoleMailAdapter();
   }
+  if (driver === "resend") {
+    return new ResendMailAdapter();
+  }
   if (driver === "smtp" || (driver === "auto" && process.env.SMTP_HOST && process.env.SMTP_FROM)) {
     return new SmtpMailAdapter();
+  }
+  // auto: prefer Resend when key is present
+  if (driver === "auto" && process.env.RESEND_API_KEY?.trim()) {
+    return new ResendMailAdapter();
   }
   return new ConsoleMailAdapter();
 }
@@ -31,5 +40,13 @@ export async function sendMail(message: MailMessage): Promise<{ delivered: boole
 
 export function mailConfigured(): boolean {
   const adapter = getMailAdapter();
-  return adapter.name === "smtp";
+  return adapter.name === "smtp" || adapter.name === "resend";
+}
+
+export function mailFromAddress(): string {
+  return (
+    process.env.MAIL_FROM?.trim() ||
+    process.env.SMTP_FROM?.trim() ||
+    "RentProof <onboarding@resend.dev>"
+  );
 }

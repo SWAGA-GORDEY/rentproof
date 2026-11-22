@@ -3,16 +3,21 @@ import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import { RateLimitError } from "@/lib/errors";
 import { sendMail, mailConfigured } from "@/lib/mail";
+import { buildCodeEmail } from "@/lib/mail/templates";
 import { consumeRateLimit } from "@/lib/rate-limit";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 export function hashVerificationCode(code: string): string {
-  return createHash("sha256").update(code).digest("hex");
+  return createHash("sha256").update(code.trim()).digest("hex");
 }
 
-export async function issueEmailVerification(userId: string, email: string): Promise<{ sent: boolean; adapter: string }> {
+export async function issueEmailVerification(
+  userId: string,
+  email: string,
+  recipientName?: string,
+): Promise<{ sent: boolean; adapter: string }> {
   consumeRateLimit(`email-verify-send:${userId}`, 3, 15 * 60 * 1000);
   const code = String(randomInt(100000, 999999));
   const now = new Date();
@@ -24,10 +29,17 @@ export async function issueEmailVerification(userId: string, email: string): Pro
     )
     .run(randomUUID(), userId, hashVerificationCode(code), expires, now.toISOString());
 
+  const mail = buildCodeEmail({
+    kind: "verify",
+    recipientName,
+    code,
+    expiresMinutes: 10,
+  });
   const result = await sendMail({
     to: email,
-    subject: "Код подтверждения RentProof",
-    text: `Ваш код подтверждения: ${code}\nДействует 10 минут.\nЕсли вы не регистрировались на RentProof, проигнорируйте письмо.`,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
   });
   writeAudit(userId, "email.verification.issued", "user", userId, {
     adapter: result.adapter,
@@ -58,7 +70,7 @@ export function verifyEmailCode(userId: string, code: string): { ok: true } | { 
   getDb()
     .prepare(`UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ?`)
     .run(row.id);
-  if (row.code_hash !== hashVerificationCode(code.trim())) {
+  if (row.code_hash !== hashVerificationCode(code)) {
     return { ok: false, reason: "invalid" };
   }
   const now = new Date().toISOString();
@@ -79,8 +91,8 @@ export function isEmailVerified(userId: string): boolean {
 
 export function verificationMailNote(): string {
   return mailConfigured()
-    ? "Мы отправили код на ваш email."
-    : "Почтовый сервис ещё не настроен (SMTP). Код создан на сервере; настройте MAIL_DRIVER/SMTP_* на Render, чтобы письма уходили реально.";
+    ? "Мы отправили код на ваш email. Проверьте входящие и папку «Спам»."
+    : "Почтовый сервис ещё не настроен. Код создан на сервере; задайте MAIL_DRIVER=resend и RESEND_API_KEY (или SMTP_*), чтобы письма уходили реально.";
 }
 
 export { RateLimitError };

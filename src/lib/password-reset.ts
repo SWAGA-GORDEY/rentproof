@@ -1,35 +1,33 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import { RateLimitError } from "@/lib/errors";
 import { sendMail, mailConfigured } from "@/lib/mail";
+import { buildCodeEmail } from "@/lib/mail/templates";
 import { hashPassword } from "@/lib/password";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { absoluteUrl } from "@/lib/site";
 
-const TOKEN_TTL_MS = 60 * 60 * 1000;
+const CODE_TTL_MS = 60 * 60 * 1000;
 
-function hashResetToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function siteBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+function hashResetSecret(value: string): string {
+  return createHash("sha256").update(value.trim()).digest("hex");
 }
 
 /**
  * Always returns ok-looking result to avoid email enumeration.
- * Issues a one-time token only when the account exists.
+ * Issues a one-time 6-digit code only when the account exists.
  */
 export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true; note: string }> {
   const email = emailRaw.trim().toLowerCase();
   consumeRateLimit(`password-reset-request:${email}`, 3, 15 * 60 * 1000);
 
-  const user = getDb().prepare(`SELECT id, email FROM users WHERE email = ?`).get(email) as
-    | { id: string; email: string }
+  const user = getDb().prepare(`SELECT id, email, name FROM users WHERE email = ?`).get(email) as
+    | { id: string; email: string; name: string }
     | undefined;
 
   if (user) {
-    const token = randomBytes(32).toString("hex");
+    const code = String(randomInt(100000, 999999));
     const now = new Date();
     getDb()
       .prepare(
@@ -39,16 +37,25 @@ export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true
       .run(
         randomUUID(),
         user.id,
-        hashResetToken(token),
-        new Date(now.getTime() + TOKEN_TTL_MS).toISOString(),
+        hashResetSecret(code),
+        new Date(now.getTime() + CODE_TTL_MS).toISOString(),
         now.toISOString(),
       );
 
-    const link = `${siteBaseUrl()}/reset-password?token=${token}`;
+    const resetUrl = absoluteUrl(`/reset-password?email=${encodeURIComponent(user.email)}`);
+    const mail = buildCodeEmail({
+      kind: "reset",
+      recipientName: user.name,
+      code,
+      expiresMinutes: 60,
+      ctaUrl: resetUrl,
+      ctaLabel: "Открыть страницу сброса пароля",
+    });
     await sendMail({
       to: user.email,
-      subject: "Сброс пароля RentProof",
-      text: `Перейдите по ссылке, чтобы задать новый пароль (действует 1 час):\n\n${link}\n\nЕсли вы не запрашивали сброс, проигнорируйте письмо.`,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
     });
     writeAudit(user.id, "password.reset.issued", "user", user.id, null);
   }
@@ -56,23 +63,49 @@ export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true
   return {
     ok: true,
     note: mailConfigured()
-      ? "Если аккаунт с таким email существует, мы отправили ссылку для сброса пароля."
-      : "Если аккаунт существует, токен сброса создан. Настройте SMTP (MAIL_DRIVER/SMTP_*), чтобы письма уходили реально.",
+      ? "Если аккаунт с таким email существует, мы отправили код для сброса пароля."
+      : "Если аккаунт существует, код сброса создан на сервере. Настройте MAIL_DRIVER=resend и RESEND_API_KEY (или SMTP_*), чтобы письма уходили реально.",
   };
 }
 
+/**
+ * Completes reset with email + 6-digit code (preferred), or a raw secret matching token_hash
+ * (for tests / advanced links).
+ */
 export async function completePasswordReset(
-  token: string,
+  tokenOrCode: string,
   nextPassword: string,
+  emailRaw?: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  consumeRateLimit(`password-reset-complete:${token.slice(0, 16)}`, 10, 15 * 60 * 1000);
-  const row = getDb()
-    .prepare(
-      `SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?`,
-    )
-    .get(hashResetToken(token)) as
-    | { id: string; user_id: string; expires_at: string; used_at: string | null }
-    | undefined;
+  const secret = tokenOrCode.trim();
+  consumeRateLimit(`password-reset-complete:${secret.slice(0, 16)}`, 10, 15 * 60 * 1000);
+
+  let row: { id: string; user_id: string; expires_at: string; used_at: string | null } | undefined;
+
+  const email = emailRaw?.trim().toLowerCase();
+  if (email && /^\d{6}$/.test(secret)) {
+    const user = getDb().prepare(`SELECT id FROM users WHERE email = ?`).get(email) as { id: string } | undefined;
+    if (!user) {
+      return { ok: false, reason: "invalid" };
+    }
+    row = getDb()
+      .prepare(
+        `SELECT id, user_id, expires_at, used_at FROM password_resets
+         WHERE user_id = ? AND token_hash = ? ORDER BY created_at DESC LIMIT 1`,
+      )
+      .get(user.id, hashResetSecret(secret)) as typeof row;
+  } else if (secret.length >= 32) {
+    row = getDb()
+      .prepare(`SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?`)
+      .get(hashResetSecret(secret)) as typeof row;
+  } else if (/^\d{6}$/.test(secret)) {
+    // Code without email — reject to avoid guessing across users.
+    return { ok: false, reason: "invalid" };
+  } else {
+    row = getDb()
+      .prepare(`SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?`)
+      .get(hashResetSecret(secret)) as typeof row;
+  }
 
   if (!row) {
     return { ok: false, reason: "invalid" };

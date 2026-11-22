@@ -118,16 +118,16 @@ describe("modernize: email verification and password reset", () => {
     assert.equal(verified.email_verified, 1);
   });
 
-  it("resets password via hashed token", async () => {
+  it("resets password via hashed email code", async () => {
     const email = uniqueEmail("reset");
     const user = await registerUser({ name: "Сброс Пароля", email, password, role: "tenant" });
     await requestPasswordReset(email);
-    const knownToken = "a".repeat(64);
+    const knownCode = "654321";
     getDb()
       .prepare(`UPDATE password_resets SET token_hash = ?, used_at = NULL WHERE user_id = ?`)
-      .run(createHash("sha256").update(knownToken).digest("hex"), user.id);
+      .run(createHash("sha256").update(knownCode).digest("hex"), user.id);
     const next = "New-password-42";
-    assert.deepEqual(await completePasswordReset(knownToken, next), { ok: true });
+    assert.deepEqual(await completePasswordReset(knownCode, next, email), { ok: true });
     const stored = passwordHashForEmail(email);
     assert.ok(stored);
     assert.equal(await verifyPassword(next, stored), true);
