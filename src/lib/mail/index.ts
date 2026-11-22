@@ -40,7 +40,13 @@ export async function sendMail(message: MailMessage): Promise<{ delivered: boole
 
 export function mailConfigured(): boolean {
   const adapter = getMailAdapter();
-  return adapter.name === "smtp" || adapter.name === "resend";
+  if (adapter.name === "smtp") {
+    return Boolean(process.env.SMTP_HOST?.trim() && process.env.SMTP_FROM?.trim());
+  }
+  if (adapter.name === "resend") {
+    return Boolean(process.env.RESEND_API_KEY?.trim());
+  }
+  return false;
 }
 
 export function mailFromAddress(): string {

@@ -20,6 +20,13 @@ describe("mail adapters", () => {
     assert.equal(mailConfigured(), true);
   });
 
+  it("treats resend without API key as not configured", () => {
+    process.env.MAIL_DRIVER = "resend";
+    delete process.env.RESEND_API_KEY;
+    assert.equal(getMailAdapter().name, "resend");
+    assert.equal(mailConfigured(), false);
+  });
+
   it("auto-selects resend when key present and no smtp", () => {
     process.env.MAIL_DRIVER = "auto";
     delete process.env.SMTP_HOST;

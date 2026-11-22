@@ -87,7 +87,13 @@ export function dccDashboard() {
     charts: { registrationsByDay, listingsByDay, aiByDay },
     health: {
       database: existsSync(dbPath) ? "ok" : "missing",
-      email: mailConfigured() ? "smtp" : "console",
+      email: (() => {
+        if (!mailConfigured()) return "console";
+        const driver = (process.env.MAIL_DRIVER ?? "auto").trim().toLowerCase();
+        if (driver === "resend" || (driver === "auto" && process.env.RESEND_API_KEY?.trim())) return "resend";
+        if (driver === "smtp" || process.env.SMTP_HOST?.trim()) return "smtp";
+        return "configured";
+      })(),
       backend: "ok",
       frontend: "ok",
       payments: billing.chargesEnabled ? `${billing.provider}:${billing.mode}` : "off",
