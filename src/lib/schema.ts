@@ -569,6 +569,21 @@ export function migrate(db: DatabaseSync): void {
   db.prepare(
     `UPDATE users SET staff_role = 'admin' WHERE is_admin = 1 AND (staff_role IS NULL OR staff_role = '')`,
   ).run();
+
+  // Manual profile badges (OWNER/ADMIN/PLUS/… are derived — never stored as elevating roles).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_badges (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      badge_kind TEXT NOT NULL,
+      granted_by TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      revoked_at TEXT,
+      revoked_by TEXT
+    );
+    CREATE INDEX IF NOT EXISTS user_badges_user ON user_badges(user_id, created_at);
+  `);
 }
 
 function hasColumn(db: DatabaseSync, table: string, column: string): boolean {

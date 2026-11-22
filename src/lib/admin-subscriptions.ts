@@ -7,7 +7,12 @@ import type { PlanId } from "@/lib/plans";
 import { isPlanId } from "@/lib/plans";
 import { enforceSubscriptionExpiry } from "@/lib/subscription-lifecycle";
 
-export type SubscriptionSourceKind = "paid" | "admin_granted" | "promotional" | "referral";
+export type SubscriptionSourceKind =
+  | "paid"
+  | "admin_granted"
+  | "owner_grant"
+  | "promotional"
+  | "referral";
 
 export const GRANT_DURATIONS_DAYS = [7, 14, 30, 90, 180, 365] as const;
 
@@ -21,6 +26,11 @@ export type GrantSubscriptionInput = {
   note?: string;
   startsAt?: string;
 };
+
+/** Manual grants never create payment rows. */
+export function isManualSubscriptionSource(source: string): boolean {
+  return source === "admin_granted" || source === "owner_grant" || source === "promotional" || source === "referral";
+}
 
 export function grantSubscription(input: GrantSubscriptionInput): string {
   if (!isPlanId(input.plan)) throw new ForbiddenError();
@@ -47,17 +57,19 @@ export function grantSubscription(input: GrantSubscriptionInput): string {
     )
     .run(now, input.userId);
 
+  const mode = input.sourceKind === "owner_grant" ? "owner_grant" : "admin_grant";
   getDb()
     .prepare(
       `INSERT INTO subscriptions (
          id, user_id, plan, mode, status, started_at, expires_at, renewal_status, created_at, updated_at,
          source_kind, granted_by, grant_reason, grant_note
-       ) VALUES (?, ?, ?, 'admin_grant', 'active', ?, ?, 'off', ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, 'active', ?, ?, 'off', ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
       input.userId,
       input.plan,
+      mode,
       startsAt,
       expiresAt,
       now,

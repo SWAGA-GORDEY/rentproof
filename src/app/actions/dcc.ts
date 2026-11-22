@@ -16,6 +16,7 @@ import { setSetting } from "@/lib/platform-settings";
 import { markAdminNotificationRead, markAllAdminNotificationsRead } from "@/lib/admin-notifications";
 import { addTicketMessage, createTicket, updateTicket } from "@/lib/support-tickets";
 import { ensureLegalDrafts, getLatestLegalDocument, type LegalDocType } from "@/lib/legal";
+import { assignManualBadge, isManualBadgeKind, revokeManualBadge } from "@/lib/user-badges";
 
 export async function dccBanUserAction(formData: FormData): Promise<void> {
   const { user, staff } = await requireStaff("users.ban");
@@ -75,8 +76,24 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
     days = 30;
   }
 
-  const sourceKind =
-    source === "promotional" || source === "referral" ? source : "admin_granted";
+  let sourceKind: "admin_granted" | "owner_grant" | "promotional" | "referral" = "admin_granted";
+  if (source === "promotional" || source === "referral") {
+    sourceKind = source;
+  } else if (source === "owner_grant") {
+    if (staff.staffRole !== "owner") {
+      redirect(`/admin/users/${userId}?error=owner_grant`);
+    }
+    sourceKind = "owner_grant";
+  } else if (staff.staffRole === "owner") {
+    // OWNER grants default to OWNER_GRANT (no fake payment).
+    sourceKind = "owner_grant";
+  }
+
+  const startsRaw = String(formData.get("startsAt") ?? "").trim();
+  const startsAt = startsRaw ? new Date(startsRaw).toISOString() : undefined;
+  if (startsRaw && Number.isNaN(Date.parse(startsRaw))) {
+    redirect(`/admin/users/${userId}?error=starts`);
+  }
 
   try {
     grantSubscription({
@@ -87,6 +104,7 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
       days,
       reason,
       note,
+      startsAt,
     });
   } catch (error) {
     if (error instanceof ForbiddenError || error instanceof NotFoundError) {
@@ -283,4 +301,34 @@ export async function dccSaveLegalDraftAction(formData: FormData): Promise<void>
     .run(randomUUID(), docType, version, title || current.title, body || current.bodyMd, new Date().toISOString());
   writeAudit(user.id, "legal.draft", "legal", docType, { version });
   redirect("/admin/legal?saved=1");
+}
+
+export async function dccAssignBadgeAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaff("admins.manage");
+  const userId = String(formData.get("userId") ?? "");
+  const kind = String(formData.get("kind") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  if (!isManualBadgeKind(kind)) redirect(`/admin/users/${userId}?error=badge`);
+  try {
+    assignManualBadge({ actorId: user.id, userId, kind, reason });
+  } catch (error) {
+    if (error instanceof ForbiddenError || error instanceof NotFoundError) {
+      redirect(`/admin/users/${userId}?error=badge`);
+    }
+    throw error;
+  }
+  redirect(`/admin/users/${userId}?saved=badge`);
+}
+
+export async function dccRevokeBadgeAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaff("admins.manage");
+  const userId = String(formData.get("userId") ?? "");
+  const badgeId = String(formData.get("badgeId") ?? "");
+  const reason = String(formData.get("reason") ?? "revoke");
+  try {
+    revokeManualBadge({ actorId: user.id, badgeId, reason });
+  } catch {
+    redirect(`/admin/users/${userId}?error=badge`);
+  }
+  redirect(`/admin/users/${userId}?saved=badge`);
 }

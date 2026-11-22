@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DccMobileNav } from "@/components/dcc-mobile-nav";
+import { OwnerBadge } from "@/components/owner-badge";
 import { dccNav } from "@/lib/admin-nav";
 import { roleLabel, type StaffProfile, hasPermission } from "@/lib/rbac";
 import { logoutAction } from "@/app/actions/auth";
@@ -50,8 +51,13 @@ export function DccShell({
                   Уведомления
                 </Link>
                 <div className="text-right">
-                  <p className="font-semibold text-navy">{staff.displayName}</p>
-                  <p className="text-xs text-accent">{roleLabel(staff.staffRole)}</p>
+                  <p className="flex items-center justify-end gap-2 font-semibold text-navy">
+                    {staff.displayName}
+                    {staff.staffRole === "owner" ? <OwnerBadge compact /> : null}
+                  </p>
+                  <p className={`text-xs ${staff.staffRole === "owner" ? "font-semibold text-[#c41e3a]" : "text-accent"}`}>
+                    {roleLabel(staff.staffRole)}
+                  </p>
                 </div>
                 <form action={logoutAction}>
                   <button type="submit" className={quietButton}>

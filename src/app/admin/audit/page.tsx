@@ -47,17 +47,23 @@ async function Body({ searchParams }: { searchParams: Promise<{ q?: string }> })
         </button>
       </form>
       <ul className="rounded-3xl border border-line bg-white p-5 text-sm">
-        {rows.map((row) => (
-          <li key={row.id} className="grid gap-1 border-b border-line py-3 md:grid-cols-[1fr_auto]">
-            <div>
-              <p className="font-semibold text-navy">{row.action}</p>
-              <p className="text-xs text-muted">
-                {row.actorId ? actors.get(row.actorId) : "system"} · {row.entityType}/{row.entityId ?? "—"}
-              </p>
-            </div>
-            <p className="text-muted">{formatDateRu(row.createdAt)}</p>
-          </li>
-        ))}
+        {rows.map((row) => {
+          const isOwnerAction = row.action.startsWith("owner.") || (actors.get(row.actorId ?? "") ?? "").includes("owner");
+          return (
+            <li key={row.id} className="grid gap-1 border-b border-line py-3 md:grid-cols-[1fr_auto]">
+              <div>
+                <p className={`font-semibold ${isOwnerAction ? "text-[#c41e3a]" : "text-navy"}`}>
+                  {isOwnerAction ? "♛ " : ""}
+                  {row.action}
+                </p>
+                <p className="text-xs text-muted">
+                  {row.actorId ? actors.get(row.actorId) : "system"} · {row.entityType}/{row.entityId ?? "—"}
+                </p>
+              </div>
+              <p className="text-muted">{formatDateRu(row.createdAt)}</p>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

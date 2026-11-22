@@ -2,12 +2,16 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
   dccAddAdminNoteAction,
+  dccAssignBadgeAction,
   dccBanUserAction,
   dccExtendSubscriptionAction,
   dccGrantSubscriptionAction,
+  dccRevokeBadgeAction,
   dccRevokeSubscriptionAction,
   dccUnbanUserAction,
 } from "@/app/actions/dcc";
+import { OwnerBadge } from "@/components/owner-badge";
+import { UserBadgeList } from "@/components/user-badge-list";
 import { fieldClass, primaryButton, secondaryButton } from "@/components/styles";
 import { listBans } from "@/lib/bans";
 import { requireStaff } from "@/lib/current-user";
@@ -17,6 +21,8 @@ import { hasPermission } from "@/lib/rbac";
 import { currentSubscriptionCard, GRANT_DURATIONS_DAYS } from "@/lib/admin-subscriptions";
 import { listSubscriptionHistory } from "@/lib/subscriptions";
 import { listRecentAudit } from "@/lib/audit";
+import { listUserBadges, MANUAL_BADGE_KINDS, ownerAssignedAt } from "@/lib/user-badges";
+import { formatKopecks } from "@/lib/money";
 
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
@@ -68,16 +74,34 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
   const audit = listRecentAudit(100).filter((entry) => entry.entityId === id || entry.actorId === id).slice(0, 30);
   const canBan = hasPermission(staff, "users.ban");
   const canGrant = hasPermission(staff, "subscriptions.grant");
+  const canBadges = hasPermission(staff, "admins.manage");
+  const badges = listUserBadges(user.id);
+  const ownerSince = user.staff_role === "owner" ? ownerAssignedAt(user.id) : null;
+  const payments = getDb()
+    .prepare(
+      `SELECT id, status, purpose, amount_kopecks, created_at FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`,
+    )
+    .all(id) as Array<{ id: string; status: string; purpose: string; amount_kopecks: number; created_at: string }>;
 
   return (
     <div className="grid max-w-5xl gap-6">
       <div>
         <p className="text-xs font-semibold uppercase text-accent">User</p>
-        <h1 className="font-display text-3xl font-semibold text-navy">{user.name}</h1>
+        <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-3xl font-semibold text-navy">
+          {user.name}
+          {user.staff_role === "owner" ? <OwnerBadge /> : null}
+        </h1>
         <p className="mt-1 text-sm text-muted">{user.email}</p>
+        <div className="mt-3">
+          <UserBadgeList badges={badges} />
+        </div>
       </div>
 
-      <section className="grid gap-2 rounded-3xl border border-line bg-white p-5 text-sm sm:grid-cols-2">
+      <section
+        className={`grid gap-2 rounded-3xl border p-5 text-sm sm:grid-cols-2 ${
+          user.staff_role === "owner" ? "border-[#c41e3a]/40 bg-[#c41e3a]/5" : "border-line bg-white"
+        }`}
+      >
         <p>ID: {user.id}</p>
         <p>Роль продукта: {user.role}</p>
         <p>Staff: {user.staff_role ?? "—"}</p>
@@ -88,6 +112,7 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
         <p>Последний вход: {user.last_login_at ? formatDateRu(user.last_login_at) : "—"}</p>
         <p>Объявлений: {listings}</p>
         <p>Телефон / город: {user.phone ?? "—"} / {user.city ?? "—"}</p>
+        {ownerSince ? <p className="sm:col-span-2 text-[#8b1228]">OWNER с: {formatDateRu(ownerSince)}</p> : null}
       </section>
 
       <section className="rounded-3xl border border-line bg-white p-5">
@@ -110,25 +135,31 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
           <div className="mt-6 grid gap-4">
             <form action={dccGrantSubscriptionAction} className="grid gap-3 rounded-2xl bg-mist/50 p-4 md:grid-cols-2">
               <input type="hidden" name="userId" value={user.id} />
+              <p className="text-sm font-semibold text-navy md:col-span-2">Выдать подписку</p>
               <label className="grid gap-1 text-sm">
                 Тариф
                 <select name="plan" className={fieldClass}>
                   <option value="plus">PLUS 299 ₽</option>
                   <option value="pro">PRO 799 ₽</option>
-                  <option value="free">FREE</option>
+                  <option value="free">FREE (отзыв)</option>
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Тип
-                <select name="sourceKind" className={fieldClass}>
+                Источник
+                <select name="sourceKind" className={fieldClass} defaultValue={staff.staffRole === "owner" ? "owner_grant" : "admin_granted"}>
+                  {staff.staffRole === "owner" ? <option value="owner_grant">OWNER_GRANT</option> : null}
                   <option value="admin_granted">ADMIN_GRANTED</option>
                   <option value="promotional">PROMOTIONAL</option>
                   <option value="referral">REFERRAL</option>
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
+                Дата начала (опц.)
+                <input name="startsAt" type="datetime-local" className={fieldClass} />
+              </label>
+              <label className="grid gap-1 text-sm">
                 Срок
-                <select name="duration" className={fieldClass}>
+                <select name="duration" className={fieldClass} defaultValue="30">
                   {GRANT_DURATIONS_DAYS.map((d) => (
                     <option key={d} value={d}>
                       {d} дней
@@ -139,10 +170,10 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
               </label>
               <label className="grid gap-1 text-sm md:col-span-2">
                 Причина
-                <input name="reason" required className={fieldClass} />
+                <input name="reason" required className={fieldClass} placeholder="Обязательно" />
               </label>
               <label className="grid gap-1 text-sm md:col-span-2">
-                Комментарий
+                Комментарий администратора
                 <input name="note" className={fieldClass} />
               </label>
               {staff.staffRole === "owner" ? (
@@ -150,6 +181,9 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
                   <input type="checkbox" name="confirmIndefinite" value="1" /> Подтверждаю бессрочную выдачу
                 </label>
               ) : null}
+              <p className="text-xs text-muted md:col-span-2">
+                Ручная выдача не создаёт платёж. OWNER_GRANT / ADMIN_GRANTED ≠ paid.
+              </p>
               <button type="submit" className={primaryButton}>
                 Выдать подписку
               </button>
@@ -230,6 +264,63 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
       ) : null}
 
       <section className="rounded-3xl border border-line bg-white p-5">
+        <h2 className="font-display text-xl font-semibold text-navy">Платежи пользователя</h2>
+        <ul className="mt-3 space-y-2 text-sm">
+          {payments.map((payment) => (
+            <li key={payment.id} className="border-b border-line py-2">
+              {payment.status} · {payment.purpose} · {formatKopecks(payment.amount_kopecks)} ·{" "}
+              {formatDateRu(payment.created_at)}
+            </li>
+          ))}
+          {payments.length === 0 ? <li className="text-muted">Реальных платежей нет.</li> : null}
+        </ul>
+      </section>
+
+      {canBadges ? (
+        <section className="rounded-3xl border border-line bg-white p-5">
+          <h2 className="font-display text-xl font-semibold text-navy">Значки (ручные)</h2>
+          <p className="mt-1 text-xs text-muted">
+            OWNER / ADMIN / PLUS / PRO / VERIFIED — производные. Через форму нельзя выдать OWNER.
+          </p>
+          <form action={dccAssignBadgeAction} className="mt-4 grid gap-3 md:grid-cols-2">
+            <input type="hidden" name="userId" value={user.id} />
+            <select name="kind" className={fieldClass}>
+              {MANUAL_BADGE_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {kind}
+                </option>
+              ))}
+            </select>
+            <input name="reason" required placeholder="Причина" className={fieldClass} />
+            <button type="submit" className={secondaryButton}>
+              Выдать значок
+            </button>
+          </form>
+          <ul className="mt-4 space-y-2 text-sm">
+            {badges
+              .filter(
+                (
+                  badge,
+                ): badge is Extract<typeof badge, { source: "manual" }> => badge.source === "manual",
+              )
+              .map((badge) => (
+                <li key={badge.id} className="flex flex-wrap items-center gap-3">
+                  <UserBadgeList badges={[badge]} />
+                  <form action={dccRevokeBadgeAction} className="flex items-center gap-2">
+                    <input type="hidden" name="userId" value={user.id} />
+                    <input type="hidden" name="badgeId" value={badge.id} />
+                    <input type="hidden" name="reason" value="revoke" />
+                    <button type="submit" className="text-xs font-semibold text-navy underline">
+                      Отозвать
+                    </button>
+                  </form>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="rounded-3xl border border-line bg-white p-5">
         <h2 className="font-display text-xl font-semibold text-navy">Внутренние заметки</h2>
         {hasPermission(staff, "users.edit") ? (
           <form action={dccAddAdminNoteAction} className="mt-3 grid gap-3">
@@ -255,7 +346,10 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
         <ul className="mt-3 space-y-2 text-sm">
           {audit.map((entry) => (
             <li key={entry.id} className="flex justify-between gap-3 border-b border-line py-2">
-              <span>{entry.action}</span>
+              <span className={entry.action.startsWith("owner.") ? "font-semibold text-[#c41e3a]" : ""}>
+                {entry.action.startsWith("owner.") ? "♛ " : ""}
+                {entry.action}
+              </span>
               <span className="text-muted">{formatDateRu(entry.createdAt)}</span>
             </li>
           ))}

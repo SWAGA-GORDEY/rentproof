@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { OwnerBadge } from "@/components/owner-badge";
+import { UserBadgeList } from "@/components/user-badge-list";
 import { requireStaff } from "@/lib/current-user";
 import { getDb } from "@/lib/db";
 import { formatDateRu } from "@/lib/format";
+import { listUserBadges } from "@/lib/user-badges";
 
 type Query = { q?: string; plan?: string; status?: string; page?: string };
 
@@ -90,26 +93,35 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-line">
-                <td className="p-3">
-                  {row.name}
-                  {row.staff_role ? ` · ${row.staff_role}` : ""}
-                </td>
-                <td>{row.email}</td>
-                <td>{row.plan}</td>
-                <td>
-                  {row.blocked_at ? "blocked" : "active"}
-                  {row.email_verified ? "" : " · unverified"}
-                </td>
-                <td>{formatDateRu(row.created_at)}</td>
-                <td className="p-3">
-                  <Link className="font-semibold text-navy underline" href={`/admin/users/${row.id}`}>
-                    Открыть
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const badges = listUserBadges(row.id);
+              return (
+                <tr
+                  key={row.id}
+                  className={`border-t border-line ${row.staff_role === "owner" ? "bg-[#c41e3a]/5" : ""}`}
+                >
+                  <td className="p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{row.name}</span>
+                      {row.staff_role === "owner" ? <OwnerBadge compact /> : null}
+                      <UserBadgeList badges={badges.filter((b) => b.kind !== "owner")} />
+                    </div>
+                  </td>
+                  <td>{row.email}</td>
+                  <td>{row.plan}</td>
+                  <td>
+                    {row.blocked_at ? "blocked" : "active"}
+                    {row.email_verified ? "" : " · unverified"}
+                  </td>
+                  <td>{formatDateRu(row.created_at)}</td>
+                  <td className="p-3">
+                    <Link className="font-semibold text-navy underline" href={`/admin/users/${row.id}`}>
+                      Открыть
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

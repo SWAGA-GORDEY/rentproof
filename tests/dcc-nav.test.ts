@@ -33,6 +33,7 @@ describe("dcc navigation", () => {
     assert.equal(shell.includes("slice(0, 6)"), false);
     assert.equal(mobile.includes("slice(0, 6)"), false);
     assert.match(shell, /DccMobileNav/);
-    assert.match(mobile, /links\.map/);
+    assert.match(mobile, /filtered\.map|links\.map/);
+    assert.match(mobile, /Поиск раздела/);
   });
 });
