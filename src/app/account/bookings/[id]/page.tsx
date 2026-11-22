@@ -2,13 +2,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { bookingDecisionAction } from "@/app/actions/bookings";
+import { startRentalCheckoutAction } from "@/app/actions/payments";
 import { EvidenceForm, ReviewForm } from "@/components/simple-forms";
 import { UploadImage } from "@/components/upload-image";
-import { secondaryButton } from "@/components/styles";
+import { primaryButton, secondaryButton } from "@/components/styles";
 import { bookingStatusLabel, getBookingForParty } from "@/lib/bookings";
 import { requireUser } from "@/lib/current-user";
 import { listEvidence } from "@/lib/evidence";
 import { formatDateRu, formatRubles } from "@/lib/format";
+import { formatKopecks } from "@/lib/money";
+import { billingStatus } from "@/lib/plans";
+import { getRentalOrderForBooking } from "@/lib/rental-orders";
 
 type Params = { id: string };
 
@@ -33,6 +37,12 @@ async function Body({ params }: { params: Promise<Params> }) {
   const before = evidence.filter((item) => item.phase === "before");
   const after = evidence.filter((item) => item.phase === "after");
   const renter = booking.renterId === user.id;
+  const order = getRentalOrderForBooking(id);
+  const billing = billingStatus();
+  const canPay =
+    renter &&
+    (booking.status === "pending" || booking.status === "confirmed") &&
+    (!order || order.paymentStatus === "unpaid" || order.paymentStatus === "canceled" || order.paymentStatus === "failed");
 
   return (
     <div className="grid gap-6">
@@ -41,12 +51,33 @@ async function Body({ params }: { params: Promise<Params> }) {
         <h1 className="mt-2 font-display text-3xl font-semibold text-navy">{booking.listingTitle}</h1>
         <p className="mt-2 text-sm text-muted">{booking.listingCity} · {formatDateRu(booking.startDate)} — {formatDateRu(booking.endDate)}</p>
         <p className="mt-2 text-sm text-ink">{booking.days} сут. · аренда {formatRubles(booking.rentAmount)} · залог {formatRubles(booking.depositAmount)}</p>
-        <p className="mt-2 text-xs text-muted">Расчёт демонстрационный. Деньги не списываются.</p>
+        <p className="mt-2 text-xs text-muted">
+          Оплата аренды — тестовая ЮKassa. Залог не удерживается на балансе RentProof до Безопасной сделки.
+        </p>
         <p className="mt-3 text-sm text-muted">Арендодатель: {booking.ownerName}. Арендатор: {booking.renterName}.</p>
         {booking.note ? <p className="mt-3 text-sm text-graphite">{booking.note}</p> : null}
       </div>
+      {order ? (
+        <div className="rounded-3xl border border-line bg-white p-5 text-sm">
+          <p className="text-xs font-semibold uppercase text-accent">Заказ {order.paymentStatus}</p>
+          <p className="mt-2 text-ink">
+            К оплате {formatKopecks(order.totalAmountKopecks)} (аренда {formatKopecks(order.rentalAmountKopecks)} + комиссия{" "}
+            {formatKopecks(order.platformFeeKopecks)})
+          </p>
+          <p className="mt-1 text-muted">Сделка: {order.dealStatus}</p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Link href={`/catalog/${booking.listingId}`} className={secondaryButton}>Карточка</Link>
+        {canPay && billing.chargesEnabled ? (
+          <form action={startRentalCheckoutAction}>
+            <input type="hidden" name="bookingId" value={booking.id} />
+            <button className={primaryButton} type="submit">Оплатить аренду (тест)</button>
+          </form>
+        ) : null}
+        {canPay && !billing.chargesEnabled ? (
+          <p className="text-sm text-muted">Оплата недоступна: нет тестовых ключей ЮKassa.</p>
+        ) : null}
         {booking.ownerId === user.id && booking.status === "pending" ? <Decision id={booking.id} decision="confirm" label="Подтвердить" /> : null}
         {booking.ownerId === user.id && booking.status === "pending" ? <Decision id={booking.id} decision="reject" label="Отклонить" /> : null}
         {(booking.status === "pending" || booking.status === "confirmed") ? <Decision id={booking.id} decision="cancel" label="Отменить" /> : null}

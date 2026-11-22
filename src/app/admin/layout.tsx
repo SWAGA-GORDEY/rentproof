@@ -32,6 +32,7 @@ async function Guard({ children }: { children: ReactNode }) {
         <Link href="/admin/users" className="text-navy">Пользователи</Link>
         <Link href="/admin/listings" className="text-navy">Объявления</Link>
         <Link href="/admin/reports" className="text-navy">Жалобы</Link>
+        <Link href="/admin/payments" className="text-navy">Платежи</Link>
       </nav>
       {children}
     </div>

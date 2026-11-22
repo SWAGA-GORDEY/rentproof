@@ -22,6 +22,8 @@ export const accountLinks = [
   { href: "/account/profile", label: "Профиль" },
   { href: "/account/listings", label: "Объявления" },
   { href: "/account/bookings", label: "Бронирования" },
+  { href: "/account/payments", label: "Платежи" },
+  { href: "/account/subscription", label: "Подписка" },
   { href: "/account/favorites", label: "Избранное" },
   { href: "/account/reviews", label: "Отзывы" },
   { href: "/account/settings", label: "Настройки" },

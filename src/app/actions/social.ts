@@ -9,7 +9,6 @@ import { ConflictError, ForbiddenError, ImageRejectedError, NotFoundError, RateL
 import { parseComplaintForm, parseContactForm, parsePasswordForm, parsePlanForm, readUploads, safePath } from "@/lib/forms";
 import { toggleFavorite } from "@/lib/favorites";
 import { consumeRateLimit } from "@/lib/rate-limit";
-import { assignDemoPlan } from "@/lib/subscriptions";
 import { changePassword, InvalidCredentialsError } from "@/lib/users";
 import { clearSession } from "@/lib/current-user";
 import { markNotificationsRead } from "@/lib/notifications";
@@ -119,13 +118,12 @@ export async function contactAction(_state: FormState, formData: FormData): Prom
 }
 
 export async function selectPlanAction(formData: FormData): Promise<void> {
-  const user = await actor();
+  // Paid plans go through ЮKassa checkout; keep demo assign only for Free when billing is off.
   const plan = parsePlanForm(formData);
   if (!plan) {
     redirect("/pricing?error=plan");
   }
-  assignDemoPlan(user.id, plan);
-  redirect("/account/settings?plan=1");
+  redirect(`/pricing#${plan}`);
 }
 
 export async function changePasswordAction(_state: FormState, formData: FormData): Promise<FormState> {
