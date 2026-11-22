@@ -3,6 +3,8 @@ import { categoryName } from "@/lib/categories";
 import type { ListingRecord } from "@/lib/listings";
 import { absoluteUrl, siteOrigin } from "@/lib/site";
 
+export const DEFAULT_OG_IMAGE = "/og-image.png";
+
 export function pageMetadata(input: {
   title: string;
   description: string;
@@ -11,8 +13,14 @@ export function pageMetadata(input: {
   imagePath?: string | null;
 }): Metadata {
   const url = absoluteUrl(input.path);
-  const images = input.imagePath
-    ? [{ url: input.imagePath.startsWith("http") ? input.imagePath : absoluteUrl(input.imagePath) }]
+  const imagePath = input.imagePath === null ? null : input.imagePath || DEFAULT_OG_IMAGE;
+  const imageUrl = imagePath
+    ? imagePath.startsWith("http")
+      ? imagePath
+      : absoluteUrl(imagePath)
+    : undefined;
+  const images = imageUrl
+    ? [{ url: imageUrl, width: 1200, height: 630, alt: "RentProof — аренда без риска" }]
     : undefined;
   return {
     title: input.title,
@@ -43,7 +51,7 @@ export function listingMetadata(listing: ListingRecord): Metadata {
     `${listing.title} в категории «${categoryName(listing.categoryId)}», ${listing.city}. ${listing.description}`,
   );
   const path = `/catalog/${listing.id}`;
-  const image = listing.images[0] ? absoluteUrl(`/media/${listing.images[0].id}`) : null;
+  const image = listing.images[0] ? absoluteUrl(`/media/${listing.images[0].id}`) : DEFAULT_OG_IMAGE;
   return pageMetadata({ title, description, path, imagePath: image });
 }
 

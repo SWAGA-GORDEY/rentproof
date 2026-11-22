@@ -13,6 +13,8 @@ const DISALLOW = [
   "/listings/",
   "/ai-assessment",
   "/ai-assessment/",
+  // User uploads under /media/ stay private to crawlers; brand assets live at site root
+  // (/favicon.*, /og-image.png, /apple-touch-icon.png) and remain allowed via Allow: /
   "/media/",
 ];
 
