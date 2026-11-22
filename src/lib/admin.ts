@@ -110,12 +110,10 @@ export function adminOverview() {
   };
 }
 
-export function promoteExistingUser(email: string): void {
-  const now = new Date().toISOString();
-  const result = getDb()
-    .prepare("UPDATE users SET is_admin = 1, blocked_at = NULL, updated_at = ? WHERE email = ?")
-    .run(now, email.trim().toLowerCase());
-  if (result.changes !== 1) {
-    throw new NotFoundError();
-  }
+/**
+ * @deprecated Privilege elevation must go through OWNER + assignStaff / OWNER_EMAIL.
+ * Kept only to fail closed if an old call site remains.
+ */
+export function promoteExistingUser(_email: string): void {
+  throw new ForbiddenError();
 }

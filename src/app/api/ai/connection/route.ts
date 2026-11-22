@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { publicAiStatus, testAiConnection } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/current-user";
+import { hasPermission, loadStaffProfile } from "@/lib/rbac";
 
 /**
  * Safe AI diagnostics for operators.
  * GET — config presence only (no network call, no secrets).
- * POST — live TokenLavka probe (admin only). Response never includes the API key.
+ * POST — live TokenLavka probe (ai.view staff only). Response never includes the API key.
  */
 export async function GET() {
   const status = publicAiStatus();
@@ -25,8 +26,9 @@ export async function GET() {
 
 export async function POST() {
   const user = await getCurrentUser();
-  if (!user?.isAdmin) {
-    return NextResponse.json({ ok: false, message: "Нужны права администратора." }, { status: 403 });
+  const staff = user ? loadStaffProfile(user.id) : null;
+  if (!staff || !hasPermission(staff, "ai.view")) {
+    return NextResponse.json({ ok: false, message: "Нужны права AI Control." }, { status: 403 });
   }
   const probe = await testAiConnection();
   return NextResponse.json(

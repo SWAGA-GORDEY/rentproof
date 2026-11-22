@@ -3,15 +3,25 @@
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/actions/auth";
 import { createAiReport, testAiConnection, type AiConnectionProbe } from "@/lib/ai";
+import { assertFeatureAllowed } from "@/lib/bans";
 import { getCurrentUser } from "@/lib/current-user";
-import { ImageRejectedError, PlanLimitError, RateLimitError } from "@/lib/errors";
+import { FeatureBlockedError, ImageRejectedError, PlanLimitError, RateLimitError } from "@/lib/errors";
 import { parseAiForm, readUploads } from "@/lib/forms";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { hasPermission, loadStaffProfile } from "@/lib/rbac";
 
 export async function analyzeAction(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
+  }
+  try {
+    assertFeatureAllowed(user.id, "ai");
+  } catch (error) {
+    if (error instanceof FeatureBlockedError) {
+      return { message: "AI-оценка ограничена для этого аккаунта." };
+    }
+    throw error;
   }
   const parsed = parseAiForm(formData);
   if (!parsed.ok) {
@@ -44,11 +54,12 @@ export async function analyzeAction(_state: FormState, formData: FormData): Prom
   }
 }
 
-/** Admin-only live probe. Never returns the API key. */
+/** Staff-only live probe. Never returns the API key. */
 export async function testAiConnectionAction(): Promise<AiConnectionProbe | { ok: false; message: string }> {
   const user = await getCurrentUser();
-  if (!user?.isAdmin) {
-    return { ok: false, message: "Нужны права администратора." };
+  const staff = user ? loadStaffProfile(user.id) : null;
+  if (!staff || !hasPermission(staff, "ai.view")) {
+    return { ok: false, message: "Нужны права AI Control." };
   }
   return testAiConnection();
 }

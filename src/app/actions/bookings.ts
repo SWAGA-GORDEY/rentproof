@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/actions/auth";
+import { assertFeatureAllowed } from "@/lib/bans";
 import { getCurrentUser } from "@/lib/current-user";
 import {
   cancelBooking,
@@ -10,7 +11,7 @@ import {
   createBooking,
   rejectBooking,
 } from "@/lib/bookings";
-import { ConflictError, ForbiddenError, NotFoundError, RateLimitError } from "@/lib/errors";
+import { ConflictError, FeatureBlockedError, ForbiddenError, NotFoundError, RateLimitError } from "@/lib/errors";
 import { parseBookingForm, parseReviewForm, safePath } from "@/lib/forms";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { createReview } from "@/lib/reviews";
@@ -25,6 +26,14 @@ async function actor() {
 
 export async function createBookingAction(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await actor();
+  try {
+    assertFeatureAllowed(user.id, "bookings");
+  } catch (error) {
+    if (error instanceof FeatureBlockedError) {
+      return { message: "Бронирования ограничены для этого аккаунта." };
+    }
+    throw error;
+  }
   const parsed = parseBookingForm(formData);
   if (!parsed.ok) {
     return { fieldErrors: parsed.fieldErrors };

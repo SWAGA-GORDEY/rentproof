@@ -97,9 +97,21 @@ export function parsePermissionsJson(raw: string | null | undefined): Permission
   }
 }
 
+/** Permissions that may be assigned to non-owner staff. OWNER-only caps stay out. */
+export const ASSIGNABLE_PERMISSIONS: readonly Permission[] = PERMISSIONS.filter(
+  (perm) => perm !== "admins.manage",
+);
+
+export function sanitizeAssignablePermissions(input: Permission[] | null | undefined): Permission[] {
+  if (!input?.length) return [];
+  return [...new Set(input.filter((perm) => ASSIGNABLE_PERMISSIONS.includes(perm)))];
+}
+
 export function permissionsForRole(role: StaffRole, override: Permission[] | null): Permission[] {
   if (role === "owner") return [...PERMISSIONS];
-  if (override && override.length > 0) return [...new Set(override)];
+  if (override && override.length > 0) {
+    return sanitizeAssignablePermissions(override);
+  }
   return [...ROLE_DEFAULTS[role]];
 }
 
@@ -144,6 +156,8 @@ export function loadStaffProfile(userId: string): StaffProfile | null {
 export function hasPermission(profile: StaffProfile, permission: Permission): boolean {
   if (!profile.staffRole || profile.staffDisabledAt) return false;
   if (profile.staffRole === "owner") return true;
+  // Staff management is OWNER-only even if a stale override listed the cap.
+  if (permission === "admins.manage") return false;
   return profile.permissions.includes(permission);
 }
 

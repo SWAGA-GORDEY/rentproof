@@ -3,7 +3,7 @@ import { dccAssignStaffAction, dccRevokeStaffAction, dccUpdateStaffAction } from
 import { fieldClass, primaryButton, secondaryButton } from "@/components/styles";
 import { requireStaff } from "@/lib/current-user";
 import { formatDateRu } from "@/lib/format";
-import { PERMISSIONS } from "@/lib/rbac";
+import { ASSIGNABLE_PERMISSIONS } from "@/lib/rbac";
 import { listStaff } from "@/lib/staff";
 
 export default function AdminStaffPage() {
@@ -33,7 +33,7 @@ async function Body() {
           <option value="support">SUPPORT</option>
         </select>
         <div className="grid gap-2 md:col-span-2 sm:grid-cols-2 lg:grid-cols-3">
-          {PERMISSIONS.map((perm) => (
+          {ASSIGNABLE_PERMISSIONS.map((perm) => (
             <label key={perm} className="flex items-center gap-2 text-xs">
               <input type="checkbox" name={`perm_${perm}`} /> {perm}
             </label>
@@ -74,7 +74,7 @@ async function Body() {
                       <option value="1">Отключён</option>
                     </select>
                     <div className="grid max-h-40 gap-1 overflow-auto sm:grid-cols-2">
-                      {PERMISSIONS.map((perm) => (
+                      {ASSIGNABLE_PERMISSIONS.map((perm) => (
                         <label key={perm} className="flex items-center gap-2 text-xs">
                           <input type="checkbox" name={`perm_${perm}`} defaultChecked={member.permissions.includes(perm)} />
                           {perm}

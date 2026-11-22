@@ -34,3 +34,9 @@ This demotes other owners to admin and binds OWNER to `OWNER_EMAIL`. Never commi
 ## 4. Staff
 
 Only OWNER can open **Admin Management**, assign ADMIN / MODERATOR / SUPPORT, set permissions, disable or revoke staff. Staff cannot ban OWNER or self-escalate to OWNER.
+
+`admins.manage` is OWNER-only: it cannot be granted to ADMIN/MODERATOR/SUPPORT via the UI or API. Privilege elevation helpers that only flipped `is_admin` are disabled.
+
+## 5. After restart
+
+OWNER binding is re-checked on process start from `OWNER_EMAIL` (idempotent for the same account). SQLite lives on the Render disk (`/data`); staff roles and bans survive restarts. Changing `OWNER_EMAIL` to another user does **not** transfer ownership while an OWNER already exists — use recovery.

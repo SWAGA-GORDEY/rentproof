@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { refreshBanState } from "@/lib/bans";
 import { getDb } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-cookie";
@@ -125,7 +126,9 @@ export async function authenticateUser(email: string, password: string): Promise
     throw new InvalidCredentialsError();
   }
 
-  if (row.blocked_at) {
+  refreshBanState(row.id);
+  const fresh = db.prepare("SELECT blocked_at FROM users WHERE id = ?").get(row.id) as { blocked_at: string | null };
+  if (fresh.blocked_at) {
     throw new AccountBlockedError();
   }
 
@@ -172,7 +175,10 @@ export function readSessionUser(token: string, nowIso: string): PublicUser | nul
   if (!row) {
     return null;
   }
-  const user = toPublicUser(row);
+  refreshBanState(row.id);
+  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(row.id) as UserRow | undefined;
+  if (!fresh) return null;
+  const user = toPublicUser(fresh);
   if (user.blockedAt) return null;
   if (row.staff_disabled_at && row.staff_role) {
     // Staff disabled still can use the product as a normal user unless blocked.

@@ -1,8 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { assertFeatureAllowed } from "@/lib/bans";
 import { getCurrentUser } from "@/lib/current-user";
-import { ConflictError, ForbiddenError, ImageRejectedError, NotFoundError, PlanLimitError, RateLimitError } from "@/lib/errors";
+import {
+  ConflictError,
+  FeatureBlockedError,
+  ForbiddenError,
+  ImageRejectedError,
+  NotFoundError,
+  PlanLimitError,
+  RateLimitError,
+} from "@/lib/errors";
 import { parseListingForm, readUpload } from "@/lib/forms";
 import { removeListingImage, saveListingImage } from "@/lib/images";
 import { createListing, getOwnedListing, setOwnerListingStatus, updateListing } from "@/lib/listings";
@@ -19,6 +28,14 @@ async function actor() {
 
 export async function saveListingAction(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await actor();
+  try {
+    assertFeatureAllowed(user.id, "listings");
+  } catch (error) {
+    if (error instanceof FeatureBlockedError) {
+      return { message: "Публикация объявлений ограничена для этого аккаунта." };
+    }
+    throw error;
+  }
   const parsed = parseListingForm(formData);
   if (!parsed.ok) {
     return { fieldErrors: parsed.fieldErrors };
@@ -39,6 +56,14 @@ export async function saveListingAction(_state: FormState, formData: FormData): 
 
 export async function listingStatusAction(formData: FormData): Promise<void> {
   const user = await actor();
+  try {
+    assertFeatureAllowed(user.id, "listings");
+  } catch (error) {
+    if (error instanceof FeatureBlockedError) {
+      redirect("/account/listings?error=blocked");
+    }
+    throw error;
+  }
   const listingId = String(formData.get("listingId") ?? "");
   const status = String(formData.get("status") ?? "");
   if (status !== "draft" && status !== "pending" && status !== "published" && status !== "archived") {

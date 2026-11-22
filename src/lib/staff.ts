@@ -4,10 +4,11 @@ import { getDb } from "@/lib/db";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import {
   isStaffRole,
+  loadStaffProfile,
   permissionsForRole,
+  sanitizeAssignablePermissions,
   type Permission,
   type StaffRole,
-  PERMISSIONS,
 } from "@/lib/rbac";
 
 export type StaffMember = {
@@ -20,6 +21,13 @@ export type StaffMember = {
   staffDisabledAt: string | null;
   createdAt: string;
 };
+
+function assertOwnerActor(actorId: string): void {
+  const actor = loadStaffProfile(actorId);
+  if (!actor || actor.staffRole !== "owner" || actor.staffDisabledAt) {
+    throw new ForbiddenError();
+  }
+}
 
 export function listStaff(): StaffMember[] {
   const rows = getDb()
@@ -69,16 +77,18 @@ export function assignStaff(input: {
   displayName?: string;
   permissions?: Permission[];
 }): void {
+  assertOwnerActor(input.actorId);
   if (input.role === "owner") throw new ForbiddenError();
   const email = input.email.trim().toLowerCase();
   const target = getDb()
     .prepare(`SELECT id, staff_role, email_verified FROM users WHERE email = ?`)
     .get(email) as { id: string; staff_role: string | null; email_verified: number } | undefined;
   if (!target) throw new NotFoundError();
+  if (target.id === input.actorId) throw new ForbiddenError();
   if (target.staff_role === "owner") throw new ForbiddenError();
   if (target.email_verified === 0) throw new ForbiddenError();
 
-  const perms = (input.permissions ?? []).filter((p) => PERMISSIONS.includes(p));
+  const perms = sanitizeAssignablePermissions(input.permissions);
   const now = new Date().toISOString();
   getDb()
     .prepare(
@@ -112,6 +122,8 @@ export function updateStaff(input: {
   permissions?: Permission[] | null;
   disabled?: boolean;
 }): void {
+  assertOwnerActor(input.actorId);
+  if (input.userId === input.actorId) throw new ForbiddenError();
   const target = getDb()
     .prepare(`SELECT id, staff_role FROM users WHERE id = ?`)
     .get(input.userId) as { id: string; staff_role: string | null } | undefined;
@@ -133,10 +145,10 @@ export function updateStaff(input: {
       .run(input.displayName.trim() || null, now, input.userId);
   }
   if (input.permissions !== undefined) {
-    const perms = input.permissions?.filter((p) => PERMISSIONS.includes(p)) ?? null;
+    const perms = sanitizeAssignablePermissions(input.permissions);
     getDb()
       .prepare(`UPDATE users SET staff_permissions = ?, updated_at = ? WHERE id = ?`)
-      .run(perms && perms.length ? JSON.stringify(perms) : null, now, input.userId);
+      .run(perms.length ? JSON.stringify(perms) : null, now, input.userId);
   }
   if (input.disabled === true) {
     getDb().prepare(`UPDATE users SET staff_disabled_at = ?, updated_at = ? WHERE id = ?`).run(now, now, input.userId);
@@ -151,6 +163,8 @@ export function updateStaff(input: {
 }
 
 export function revokeStaff(actorId: string, userId: string): void {
+  assertOwnerActor(actorId);
+  if (userId === actorId) throw new ForbiddenError();
   const target = getDb()
     .prepare(`SELECT id, staff_role FROM users WHERE id = ?`)
     .get(userId) as { id: string; staff_role: string | null } | undefined;

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
+import { notifyUser } from "@/lib/notifications";
 import type { PlanId } from "@/lib/plans";
 
 /** Downgrade expired paid subscriptions to FREE. Safe to call on read paths. */
@@ -29,14 +30,23 @@ export function enforceSubscriptionExpiry(userId: string, now = new Date()): Pla
   }
 
   const stamp = now.toISOString();
+  const fromPlan = row.plan;
   getDb().prepare(`UPDATE subscriptions SET status = 'expired', renewal_status = 'off', updated_at = ? WHERE id = ?`).run(stamp, row.id);
   getDb().prepare(`UPDATE users SET plan = 'free', updated_at = ? WHERE id = ?`).run(stamp, userId);
   getDb()
     .prepare(
-      `INSERT INTO subscriptions (id, user_id, plan, mode, status, started_at, expires_at, renewal_status, created_at, updated_at)
-       VALUES (?, ?, 'free', 'expiry', 'active', ?, NULL, 'off', ?, ?)`,
+      `INSERT INTO subscriptions (
+         id, user_id, plan, mode, status, started_at, expires_at, renewal_status, created_at, updated_at,
+         source_kind, grant_reason
+       ) VALUES (?, ?, 'free', 'expiry', 'active', ?, NULL, 'off', ?, ?, 'admin_granted', ?)`,
     )
-    .run(randomUUID(), userId, stamp, stamp, stamp);
-  writeAudit(userId, "subscription.expired", "subscription", row.id, { from: row.plan });
+    .run(randomUUID(), userId, stamp, stamp, stamp, `expired from ${fromPlan}`);
+  writeAudit(userId, "subscription.expired", "subscription", row.id, { from: fromPlan });
+  notifyUser(userId, {
+    kind: "subscription",
+    title: "Подписка истекла",
+    body: `Тариф ${fromPlan.toUpperCase()} закончился. Аккаунт переведён на FREE. История подписок сохранена.`,
+    href: "/account/subscription",
+  });
   return "free";
 }

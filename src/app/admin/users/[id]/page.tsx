@@ -201,6 +201,13 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
             </select>
             <input name="days" defaultValue="7" className={fieldClass} placeholder="Дней (для temporary)" />
             <input name="reason" required className={`${fieldClass} md:col-span-2`} placeholder="Причина" />
+            <div className="flex flex-wrap gap-3 text-xs md:col-span-2">
+              {(["listings", "bookings", "ai", "crm"] as const).map((feature) => (
+                <label key={feature} className="flex items-center gap-2">
+                  <input type="checkbox" name={`feature_${feature}`} defaultChecked /> {feature}
+                </label>
+              ))}
+            </div>
             <button type="submit" className={primaryButton}>
               Заблокировать
             </button>

@@ -10,7 +10,7 @@ import { writeAudit } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
 import { moderateListing } from "@/lib/listings";
 import { assignStaff, revokeStaff, updateStaff } from "@/lib/staff";
-import { isStaffRole, type Permission, PERMISSIONS, type StaffRole } from "@/lib/rbac";
+import { isStaffRole, type Permission, ASSIGNABLE_PERMISSIONS, type StaffRole } from "@/lib/rbac";
 import { isPlanId, type PlanId } from "@/lib/plans";
 import { setSetting } from "@/lib/platform-settings";
 import { markAdminNotificationRead, markAllAdminNotificationsRead } from "@/lib/admin-notifications";
@@ -23,6 +23,7 @@ export async function dccBanUserAction(formData: FormData): Promise<void> {
   const kind = String(formData.get("kind") ?? "permanent");
   const reason = String(formData.get("reason") ?? "");
   const days = Number(formData.get("days") ?? "7");
+  const features = ["listings", "bookings", "ai", "crm"].filter((feature) => formData.get(`feature_${feature}`) === "on");
   try {
     banUser({
       actorId: user.id,
@@ -30,6 +31,7 @@ export async function dccBanUserAction(formData: FormData): Promise<void> {
       kind: kind === "temporary" ? "temporary" : kind === "feature" ? "feature" : "permanent",
       reason,
       expiresAt: kind === "temporary" ? new Date(Date.now() + Math.max(1, days) * 864e5).toISOString() : null,
+      features,
     });
   } catch (error) {
     if (error instanceof ForbiddenError || error instanceof NotFoundError) {
@@ -128,7 +130,7 @@ export async function dccAssignStaffAction(formData: FormData): Promise<void> {
   const role = String(formData.get("role") ?? "moderator");
   const displayName = String(formData.get("displayName") ?? "");
   if (!isStaffRole(role) || role === "owner") redirect("/admin/staff?error=role");
-  const permissions = PERMISSIONS.filter((perm) => formData.get(`perm_${perm}`) === "on");
+  const permissions = ASSIGNABLE_PERMISSIONS.filter((perm) => formData.get(`perm_${perm}`) === "on");
   try {
     assignStaff({
       actorId: user.id,
@@ -152,7 +154,7 @@ export async function dccUpdateStaffAction(formData: FormData): Promise<void> {
   const role = String(formData.get("role") ?? "");
   const displayName = String(formData.get("displayName") ?? "");
   const disabled = String(formData.get("disabled") ?? "");
-  const permissions = PERMISSIONS.filter((perm) => formData.get(`perm_${perm}`) === "on");
+  const permissions = ASSIGNABLE_PERMISSIONS.filter((perm) => formData.get(`perm_${perm}`) === "on");
   try {
     updateStaff({
       actorId: user.id,

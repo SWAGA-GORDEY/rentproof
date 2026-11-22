@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
+import { FeatureBlockedError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { notifyUser } from "@/lib/notifications";
 import { isOwnerUser } from "@/lib/rbac";
 
 export type BanKind = "permanent" | "temporary" | "feature";
+
+export const BAN_FEATURES = ["listings", "bookings", "ai", "crm"] as const;
+export type BanFeature = (typeof BAN_FEATURES)[number];
 
 export type BanRecord = {
   id: string;
@@ -40,6 +43,60 @@ export function activeBan(userId: string, now = new Date()): BanRecord | null {
   return row ? mapBan(row) : null;
 }
 
+/** Lift expired temporary bans and clear stale account blocks caused by them. */
+export function refreshBanState(userId: string, now = new Date()): BanRecord | null {
+  const active = activeBan(userId, now);
+  if (active) return active;
+
+  const iso = now.toISOString();
+  const expired = getDb()
+    .prepare(
+      `SELECT id FROM account_bans
+       WHERE user_id = ? AND lifted_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ?`,
+    )
+    .all(userId, iso) as Array<{ id: string }>;
+
+  if (expired.length > 0) {
+    getDb()
+      .prepare(
+        `UPDATE account_bans SET lifted_at = ?
+         WHERE user_id = ? AND lifted_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ?`,
+      )
+      .run(iso, userId, iso);
+
+    const stillBlocked = getDb()
+      .prepare(
+        `SELECT id FROM account_bans
+         WHERE user_id = ? AND lifted_at IS NULL
+           AND kind IN ('permanent', 'temporary')
+           AND (expires_at IS NULL OR expires_at > ?)`,
+      )
+      .get(userId, iso) as { id: string } | undefined;
+
+    if (!stillBlocked) {
+      getDb()
+        .prepare(`UPDATE users SET blocked_at = NULL, account_status = 'active', updated_at = ? WHERE id = ?`)
+        .run(iso, userId);
+    }
+  }
+
+  return activeBan(userId, now);
+}
+
+export function assertFeatureAllowed(userId: string, feature: BanFeature): void {
+  const ban = refreshBanState(userId);
+  if (!ban) return;
+  if (ban.kind === "permanent" || ban.kind === "temporary") {
+    throw new FeatureBlockedError(feature);
+  }
+  if (ban.kind === "feature") {
+    const features = ban.features.length ? ban.features : [...BAN_FEATURES];
+    if (features.includes(feature)) {
+      throw new FeatureBlockedError(feature);
+    }
+  }
+}
+
 export function banUser(input: {
   actorId: string;
   userId: string;
@@ -65,6 +122,12 @@ export function banUser(input: {
   const expires =
     input.kind === "temporary" ? input.expiresAt ?? new Date(Date.now() + 7 * 864e5).toISOString() : input.expiresAt ?? null;
 
+  const features =
+    input.kind === "feature"
+      ? (input.features ?? []).filter((f): f is BanFeature => (BAN_FEATURES as readonly string[]).includes(f))
+      : [];
+  const storedFeatures = input.kind === "feature" && features.length === 0 ? [...BAN_FEATURES] : features;
+
   getDb()
     .prepare(
       `INSERT INTO account_bans (id, user_id, kind, reason, features_json, created_by, created_at, expires_at, lifted_at, lifted_by)
@@ -75,7 +138,7 @@ export function banUser(input: {
       input.userId,
       input.kind,
       reason,
-      JSON.stringify(input.features ?? []),
+      JSON.stringify(storedFeatures),
       input.actorId,
       now,
       expires,

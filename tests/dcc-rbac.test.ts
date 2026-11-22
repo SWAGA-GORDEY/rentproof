@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { banUser, liftBan, activeBan } from "@/lib/bans";
+import { banUser, liftBan, activeBan, assertFeatureAllowed, refreshBanState } from "@/lib/bans";
 import { getDb } from "@/lib/db";
-import { ForbiddenError } from "@/lib/errors";
+import { FeatureBlockedError, ForbiddenError } from "@/lib/errors";
 import { ensureOwnerFromEnv } from "@/lib/owner";
 import {
   assignStaff,
@@ -16,6 +16,7 @@ import {
   currentSubscriptionCard,
 } from "@/lib/admin-subscriptions";
 import { hasPermission, loadStaffProfile } from "@/lib/rbac";
+import { promoteExistingUser } from "@/lib/admin";
 import { registerUser } from "@/lib/users";
 import { enforceSubscriptionExpiry } from "@/lib/subscription-lifecycle";
 
@@ -85,6 +86,21 @@ describe("dcc rbac and owner", () => {
 
     revokeStaff(owner.id, mod.id);
     assert.equal(loadStaffProfile(mod.id)?.staffRole, null);
+
+    // Non-owner cannot manage staff even if somehow calling the lib.
+    assert.throws(
+      () => assignStaff({ actorId: adminUser.id, email: email("x"), role: "moderator" }),
+      ForbiddenError,
+    );
+    // admins.manage cannot be granted via override.
+    updateStaff({
+      actorId: owner.id,
+      userId: adminUser.id,
+      permissions: ["users.view", "admins.manage", "subscriptions.grant"],
+    });
+    assert.equal(hasPermission(loadStaffProfile(adminUser.id)!, "admins.manage"), false);
+    assert.equal(hasPermission(loadStaffProfile(adminUser.id)!, "subscriptions.grant"), true);
+    assert.throws(() => promoteExistingUser(email("nobody")), ForbiddenError);
   });
 
   it("bans and unbans regular users for real", async () => {
@@ -102,6 +118,36 @@ describe("dcc rbac and owner", () => {
     assert.ok(row.blocked_at);
     liftBan(owner.id, victim.id);
     assert.equal(activeBan(victim.id), null);
+
+    const featureUser = await registerUser({ name: "Feat", email: email("feat"), password, role: "landlord" });
+    banUser({
+      actorId: owner.id,
+      userId: featureUser.id,
+      kind: "feature",
+      reason: "abuse listings",
+      features: ["listings"],
+    });
+    assert.throws(() => assertFeatureAllowed(featureUser.id, "listings"), FeatureBlockedError);
+    assert.doesNotThrow(() => assertFeatureAllowed(featureUser.id, "bookings"));
+
+    const temp = await registerUser({ name: "Temp", email: email("temp"), password, role: "tenant" });
+    const past = new Date(Date.now() - 60_000).toISOString();
+    banUser({
+      actorId: owner.id,
+      userId: temp.id,
+      kind: "temporary",
+      reason: "temp spam",
+      expiresAt: past,
+    });
+    // Force-expire path: refresh clears stale block after expiry.
+    getDb()
+      .prepare(`UPDATE account_bans SET expires_at = ? WHERE user_id = ? AND lifted_at IS NULL`)
+      .run(past, temp.id);
+    assert.equal(refreshBanState(temp.id), null);
+    const cleared = getDb().prepare(`SELECT blocked_at FROM users WHERE id = ?`).get(temp.id) as {
+      blocked_at: string | null;
+    };
+    assert.equal(cleared.blocked_at, null);
   });
 });
 
