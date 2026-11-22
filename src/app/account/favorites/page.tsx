@@ -3,7 +3,7 @@ import { CatalogCard } from "@/components/catalog-card";
 import { requireUser } from "@/lib/current-user";
 import { listFavorites } from "@/lib/favorites";
 
-export const metadata = { title: "Избранное — RentProof" };
+export const metadata = { title: "Избранное" };
 
 export default function FavoritesPage() {
   return (

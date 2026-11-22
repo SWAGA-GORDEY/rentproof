@@ -3,7 +3,11 @@ import { PageShell } from "@/components/page-shell";
 import { ListingForm } from "@/components/listing-form";
 import { requireUser } from "@/lib/current-user";
 
-export const metadata = { title: "Новое объявление — RentProof" };
+export const metadata = {
+  title: "Новое объявление",
+  alternates: { canonical: "/listings/create" },
+  robots: { index: false, follow: false },
+};
 
 export default function CreateListingPage() {
   return (

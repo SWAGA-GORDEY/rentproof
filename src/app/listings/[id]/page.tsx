@@ -11,7 +11,10 @@ import { listListingReviews } from "@/lib/reviews";
 
 type Params = { id: string };
 
-export const metadata = { title: "Объявление — RentProof" };
+export const metadata = {
+  title: "Объявление",
+  robots: { index: false, follow: false },
+};
 
 export default function ListingPage({ params }: { params: Promise<Params> }) {
   return (

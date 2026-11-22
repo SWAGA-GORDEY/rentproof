@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { requireUser } from "@/lib/current-user";
 
 export const metadata = {
+  alternates: { canonical: "/account" },
   robots: { index: false, follow: false },
 };
 

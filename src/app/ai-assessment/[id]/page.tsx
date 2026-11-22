@@ -8,7 +8,10 @@ import { requireUser } from "@/lib/current-user";
 
 type Params = { id: string };
 
-export const metadata = { title: "Отчёт оценки — RentProof" };
+export const metadata = {
+  title: "Отчёт оценки",
+  robots: { index: false, follow: false },
+};
 
 export default function AiReportPage({ params }: { params: Promise<Params> }) {
   return (

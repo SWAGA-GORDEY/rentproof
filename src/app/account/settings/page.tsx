@@ -9,7 +9,7 @@ import { mailChannelStatus } from "@/lib/notifications";
 import { billingStatus, plans } from "@/lib/plans";
 import { readPlan } from "@/lib/subscriptions";
 
-export const metadata = { title: "Настройки — RentProof" };
+export const metadata = { title: "Настройки" };
 
 export default function SettingsPage() {
   return (

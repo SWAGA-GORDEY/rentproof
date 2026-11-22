@@ -119,6 +119,18 @@ Open Graph is for messenger/social previews. **Not** a guarantee of large images
 | Production robots/sitemap used `localhost:3000` | Dynamic robots/sitemap + SITE_URL bake; **verified fixed on live** |
 | Missing branded favicon / OG card | `public/favicon*` + `og-image.png`; wired in layout; **live 200** |
 | Weak default OG path | `DEFAULT_OG_IMAGE=/og-image.png` |
+| Duplicate titles `… \| RentProof \| RentProof` on categories/listings | Titles no longer hardcode brand; template applies once |
+| Login/register/account canonical pointed at `/` | Self-canonical + `noindex` on auth/account/AI/listing-manage pages |
+
+### Re-audit (2026-11-22 ~13:36 UTC / 18:36 Asia/Yekaterinburg)
+
+| Check | Result |
+|-------|--------|
+| Sitemap URLs | 26 public, **0** localhost, **0** login/register/account/admin/api |
+| Home / category / listing | 200, index,follow, viewport, OG, Twitter |
+| Login / register / account | 200, **noindex,nofollow** |
+| Favicon.ico / og-image.png HEAD | **200** |
+| Listing Product JSON-LD | Present on `/catalog/demo-tent` |
 
 ## 13. Actions requiring owner (Michael)
 

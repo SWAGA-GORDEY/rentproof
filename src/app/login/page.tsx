@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/current-user";
 
 export const metadata = {
   title: "Вход",
+  alternates: { canonical: "/login" },
   robots: { index: false, follow: false },
 };
 

@@ -9,7 +9,7 @@ import { listNotifications, mailChannelStatus, unreadCount } from "@/lib/notific
 import { readPlan } from "@/lib/subscriptions";
 import { roleLabel } from "@/lib/validation";
 
-export const metadata = { title: "Кабинет — RentProof" };
+export const metadata = { title: "Кабинет" };
 
 export default function AccountPage() {
   return (

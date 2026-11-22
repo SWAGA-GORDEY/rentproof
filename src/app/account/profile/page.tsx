@@ -3,7 +3,7 @@ import { ProfileForm } from "@/components/profile-form";
 import { requireUser } from "@/lib/current-user";
 import { roleLabel } from "@/lib/validation";
 
-export const metadata = { title: "Профиль — RentProof" };
+export const metadata = { title: "Профиль" };
 
 export default function ProfilePage() {
   return (

@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/current-user";
 import { formatDateRu } from "@/lib/format";
 import { listUserReviews, userRating } from "@/lib/reviews";
 
-export const metadata = { title: "Отзывы — RentProof" };
+export const metadata = { title: "Отзывы" };
 
 export default function ReviewsPage() {
   return (

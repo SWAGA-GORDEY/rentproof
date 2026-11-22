@@ -22,8 +22,11 @@ export function pageMetadata(input: {
   const images = imageUrl
     ? [{ url: imageUrl, width: 1200, height: 630, alt: "RentProof — аренда без риска" }]
     : undefined;
+  // Avoid "… | RentProof | RentProof" when the title already names the brand
+  // and the root layout template is `%s | RentProof`.
+  const titleAlreadyBranded = /rentproof/i.test(input.title);
   return {
-    title: input.title,
+    title: titleAlreadyBranded ? { absolute: input.title } : input.title,
     description: input.description,
     alternates: { canonical: url },
     openGraph: {
@@ -46,7 +49,7 @@ export function pageMetadata(input: {
 }
 
 export function listingMetadata(listing: ListingRecord): Metadata {
-  const title = `${listing.title} — аренда в ${listing.city} | RentProof`;
+  const title = `${listing.title} — аренда в ${listing.city}`;
   const description = trimDescription(
     `${listing.title} в категории «${categoryName(listing.categoryId)}», ${listing.city}. ${listing.description}`,
   );

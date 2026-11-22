@@ -4,7 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { primaryButton } from "@/components/styles";
 import { requireUser } from "@/lib/current-user";
 
-export const metadata = { title: "Арендатор — RentProof" };
+export const metadata = { title: "Арендатор" };
 
 export default function TenantPage() {
   return (
