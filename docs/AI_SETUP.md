@@ -30,6 +30,18 @@ OPENAI_MODEL=gpt-6-luna
 
 После изменения переменных **перезапустите** сервис.
 
+## Бюджет (~500 ₽/месяц)
+
+Мягкие ограничители (подстройте по факту расхода в кабинете TokenLavka):
+
+```
+RENTPROOF_AI_HOURLY_LIMIT=4
+RENTPROOF_AI_MONTHLY_CAP=40
+RENTPROOF_AI_MAX_TOKENS=1200
+```
+
+Повторные автоматические ретраи к провайдеру не выполняются. Admin probe (`POST /api/ai/connection`) тоже расходует месячный soft-cap.
+
 ## Как вызывается API из приложения
 
 1. Браузер отправляет форму на server action `analyzeAction` (`src/app/actions/ai.ts`) — same-origin, без CORS к TokenLavka.

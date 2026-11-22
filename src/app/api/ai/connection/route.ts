@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { publicAiStatus, testAiConnection } from "@/lib/ai";
+import { consumeAiProbeBudget } from "@/lib/ai-budget";
 import { getCurrentUser } from "@/lib/current-user";
+import { RateLimitError } from "@/lib/errors";
 
 /**
  * Safe AI diagnostics for operators.
@@ -27,6 +29,14 @@ export async function POST() {
   const user = await getCurrentUser();
   if (!user?.isAdmin) {
     return NextResponse.json({ ok: false, message: "Нужны права администратора." }, { status: 403 });
+  }
+  try {
+    consumeAiProbeBudget();
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ ok: false, message: "Лимит AI-проверок исчерпан." }, { status: 429 });
+    }
+    throw error;
   }
   const probe = await testAiConnection();
   return NextResponse.json(

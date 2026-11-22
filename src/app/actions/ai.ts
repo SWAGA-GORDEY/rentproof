@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/actions/auth";
 import { createAiReport, testAiConnection, type AiConnectionProbe } from "@/lib/ai";
+import { consumeAiProbeBudget } from "@/lib/ai-budget";
 import { getCurrentUser } from "@/lib/current-user";
 import { ImageRejectedError, PlanLimitError, RateLimitError } from "@/lib/errors";
 import { parseAiForm, readUploads } from "@/lib/forms";
-import { consumeRateLimit } from "@/lib/rate-limit";
 
 export async function analyzeAction(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
@@ -22,7 +22,7 @@ export async function analyzeAction(_state: FormState, formData: FormData): Prom
     return { message: "Загрузите от 1 до 4 фотографий JPEG, PNG или WebP, каждая до 2 МБ." };
   }
   try {
-    consumeRateLimit(`ai:${user.id}`, 8, 60 * 60 * 1000);
+    // Budget is enforced once inside createAiReport before the provider call (no double-count, no retries).
     const bytes = await Promise.all(files.map(async (file) => new Uint8Array(await file.arrayBuffer())));
     const id = await createAiReport(user.id, parsed.value, bytes);
     redirect(`/ai-assessment/${id}`);
@@ -37,7 +37,7 @@ export async function analyzeAction(_state: FormState, formData: FormData): Prom
       return { message: "Фотография не прошла проверку типа или размера." };
     }
     if (error instanceof RateLimitError) {
-      return { message: "Слишком много запусков анализа. Подождите и повторите." };
+      return { message: "Достигнут лимит AI-запросов (час или месяц). Подождите или снизьте частоту." };
     }
     console.error("ai action failed");
     return { message: "Не удалось сохранить запрос на анализ." };
@@ -49,6 +49,14 @@ export async function testAiConnectionAction(): Promise<AiConnectionProbe | { ok
   const user = await getCurrentUser();
   if (!user?.isAdmin) {
     return { ok: false, message: "Нужны права администратора." };
+  }
+  try {
+    consumeAiProbeBudget();
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { ok: false, message: "Лимит AI-проверок исчерпан. Повторите позже." };
+    }
+    throw error;
   }
   return testAiConnection();
 }
