@@ -67,9 +67,18 @@ All returned **200** with expected content types:
 - `Disallow: /media/` applies only to user uploads; **does not block** favicon or OG image.
 - Local robots/sitemap contain **no** `localhost`; sitemap URLs use `https://rentproof2.onrender.com`.
 
-## Production (pre-merge snapshot)
+## Production (after PR #3 merge + redeploy)
 
-At check time, live site still served the **old** robots/sitemap with `http://localhost:3000` (SEO PR not merged/redeployed yet). Favicon/OG paths on production returned non-200 until this branch is deployed.
+Verified live (2026-11-22 ~13:32 UTC / 18:32 Asia/Yekaterinburg):
+
+| URL | Status |
+|-----|--------|
+| https://rentproof2.onrender.com/favicon.ico | 200 |
+| https://rentproof2.onrender.com/favicon.svg | 200 |
+| https://rentproof2.onrender.com/og-image.png | 200 |
+| https://rentproof2.onrender.com/apple-touch-icon.png | 200 |
+| https://rentproof2.onrender.com/robots.txt | 200, no localhost |
+| https://rentproof2.onrender.com/sitemap.xml | 200, rentproof2 host |
 
 Open Graph is for messenger/social link previews. This report does **not** claim Yandex will show a large image in SERP.
 
