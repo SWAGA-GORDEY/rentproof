@@ -9,9 +9,12 @@ export const footerLinks = [
   { href: "/catalog", label: "Каталог" },
   { href: "/about", label: "О платформе" },
   { href: "/how-it-works", label: "Как это работает" },
+  { href: "/support", label: "Поддержка" },
   { href: "/faq", label: "Вопросы" },
   { href: "/contacts", label: "Контакты" },
   { href: "/pricing", label: "Тарифы" },
+  { href: "/privacy", label: "Конфиденциальность" },
+  { href: "/terms", label: "Соглашение" },
 ] as const;
 
 export const accountLinks = [

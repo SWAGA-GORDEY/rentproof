@@ -243,6 +243,19 @@ export function getPublishedListing(id: string): ListingRecord | null {
   return row ? hydrate(row) : null;
 }
 
+/** Lightweight rows for sitemap / SEO indexes — published only, no invented listings. */
+export function listPublishedListingSitemapEntries(): Array<{ id: string; updatedAt: string }> {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, updated_at FROM listings
+       WHERE status = 'published'
+       ORDER BY updated_at DESC
+       LIMIT 5000`,
+    )
+    .all() as Array<{ id: string; updated_at: string }>;
+  return rows.map((row) => ({ id: row.id, updatedAt: row.updated_at }));
+}
+
 export function getManageableListing(actorId: string, isAdmin: boolean, id: string): ListingRecord | null {
   const row = getDb().prepare(`${SELECT_LISTING} WHERE listings.id = ?`).get(id) as ListingRow | undefined;
   if (!row) {

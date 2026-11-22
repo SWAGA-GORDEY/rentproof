@@ -4,7 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { requireAdmin } from "@/lib/current-user";
 
-export const metadata = { title: "Администрирование — RentProof" };
+export const metadata = {
+  title: "Администрирование",
+  robots: { index: false, follow: false },
+};
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (

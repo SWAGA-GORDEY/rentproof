@@ -8,8 +8,9 @@ import { formatDateRu } from "@/lib/format";
 import { readPlan } from "@/lib/subscriptions";
 
 export const metadata = {
-  title: "Визуальная оценка — RentProof",
+  title: "Визуальная оценка",
   description: "Разбор загруженных фотографий. Это не техническая экспертиза.",
+  robots: { index: false, follow: false },
 };
 
 export default function AiPage() {

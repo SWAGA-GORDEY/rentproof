@@ -1,9 +1,12 @@
 import { PageShell } from "@/components/page-shell";
 
-export const metadata = {
-  title: "Как это работает — RentProof",
-  description: "Путь от объявления до заявки, фиксации состояния и отзыва.",
-};
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Как это работает",
+  description: "Путь от объявления до заявки, фиксации состояния, отзыва и визуальной оценки фотографий.",
+  path: "/how-it-works",
+});
 
 const steps = [
   ["Аккаунт", "Регистрация арендатора или арендодателя. Пароль хранится как scrypt-хеш."],

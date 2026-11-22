@@ -1,6 +1,12 @@
 import { PageShell } from "@/components/page-shell";
 
-export const metadata = { title: "Вопросы — RentProof", description: "Короткие ответы о каталоге, бронировании, AI и оплате." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Вопросы и ответы",
+  description: "Короткие ответы о каталоге аренды, бронировании, визуальной оценке и оплате на RentProof.",
+  path: "/faq",
+});
 
 const items = [
   ["Можно ли оплатить аренду на сайте?", "Нет. Суммы на экране — демонстрационный расчёт. Платёжный провайдер не подключён."],

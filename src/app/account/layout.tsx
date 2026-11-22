@@ -4,6 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { requireUser } from "@/lib/current-user";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col">

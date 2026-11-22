@@ -5,7 +5,8 @@ import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/current-user";
 
 export const metadata = {
-  title: "Вход — RentProof",
+  title: "Вход",
+  robots: { index: false, follow: false },
 };
 
 export default function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {

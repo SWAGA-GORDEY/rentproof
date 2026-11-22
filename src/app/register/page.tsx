@@ -5,7 +5,8 @@ import { RegisterForm } from "@/components/register-form";
 import { getCurrentUser } from "@/lib/current-user";
 
 export const metadata = {
-  title: "Регистрация — RentProof",
+  title: "Регистрация",
+  robots: { index: false, follow: false },
 };
 
 export default function RegisterPage() {

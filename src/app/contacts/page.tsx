@@ -1,7 +1,13 @@
 import { PageShell } from "@/components/page-shell";
 import { ContactForm } from "@/components/simple-forms";
 
-export const metadata = { title: "Контакты — RentProof", description: "Сообщение сохраняется на сервере. Письмо не отправляется, пока почта не настроена." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Контакты",
+  description: "Связь с командой RentProof. Сообщение сохраняется на сервере; письмо уходит только после настройки почты.",
+  path: "/contacts",
+});
 
 export default function ContactsPage() {
   return (
