@@ -133,7 +133,7 @@ async function Body({
           <a href="#history" className="rounded-xl border border-line bg-white px-3 py-1.5 font-semibold text-navy">
             История
           </a>
-          <Link href="/admin/users" className="rounded-xl border border-line bg-white px-3 py-1.5 text-muted">
+          <Link href="/owner/users" className="rounded-xl border border-line bg-white px-3 py-1.5 text-muted">
             ← К списку
           </Link>
         </nav>

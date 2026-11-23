@@ -13,6 +13,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "4mb",
     },
   },
+  /**
+   * Rewrites (not redirects): browser URL stays /owner/... while App Router
+   * serves the existing /admin tree. Physical /admin still works.
+   * Case typos (/Admin) are handled in src/proxy.ts — never add them here
+   * (case-insensitive matching can loop /admin → /admin).
+   */
+  async rewrites() {
+    return [
+      { source: "/owner", destination: "/admin" },
+      { source: "/owner/:path*", destination: "/admin/:path*" },
+      { source: "/control-center", destination: "/admin" },
+      { source: "/control-center/:path*", destination: "/admin/:path*" },
+    ];
+  },
   async headers() {
     return [
       {

@@ -52,6 +52,33 @@ export function dccDashboard() {
     });
   }
 
+  const revenueByDay: Array<{ day: string; count: number }> = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const day = new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10);
+    const next = new Date(now.getTime() - (i - 1) * 864e5).toISOString().slice(0, 10);
+    const row = getDb()
+      .prepare(
+        `SELECT COALESCE(SUM(amount_kopecks), 0) AS s FROM payments
+         WHERE status = 'succeeded' AND created_at >= ? AND created_at < ?`,
+      )
+      .get(day, next) as { s: number };
+    revenueByDay.push({ day, count: Number(row.s) });
+  }
+
+  const activeUsersByDay: Array<{ day: string; count: number }> = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const day = new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10);
+    const next = new Date(now.getTime() - (i - 1) * 864e5).toISOString().slice(0, 10);
+    activeUsersByDay.push({
+      day,
+      count: count(
+        `SELECT COUNT(*) AS c FROM users WHERE last_login_at IS NOT NULL AND last_login_at >= ? AND last_login_at < ?`,
+        day,
+        next,
+      ),
+    });
+  }
+
   const billing = billingStatus();
   const dbPath = databasePath();
 
@@ -100,7 +127,8 @@ export function dccDashboard() {
       errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status = 'unavailable' OR status = 'error'`),
     },
     planDistribution,
-    charts: { registrationsByDay, listingsByDay, aiByDay },
+    charts: { registrationsByDay, listingsByDay, aiByDay, revenueByDay, activeUsersByDay },
+    loginFailuresDay: count(`SELECT COUNT(*) AS c FROM login_attempts WHERE attempted_at >= ?`, dayAgo),
     health: {
       database: existsSync(dbPath) ? "ok" : "missing",
       email: (() => {
@@ -189,6 +217,16 @@ export function dccAiCenter() {
       plan,
     ),
   }));
+  const recentErrors = getDb()
+    .prepare(
+      `SELECT id, user_id, status, created_at FROM ai_reports
+       WHERE status IN ('unavailable','error') ORDER BY created_at DESC LIMIT 20`,
+    )
+    .all() as Array<{ id: string; user_id: string; status: string; created_at: string }>;
+  const recentOk = count(
+    `SELECT COUNT(*) AS c FROM ai_reports WHERE status NOT IN ('unavailable','error') AND created_at >= ?`,
+    monthAgo,
+  );
   return {
     model: process.env.OPENAI_MODEL?.trim() || "gpt-6-luna",
     baseUrlHost: (() => {
@@ -199,19 +237,126 @@ export function dccAiCenter() {
       }
     })(),
     keyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
-    budgetRubHint: 500,
+    // Orientational only — no vendor billing API wired; do not treat as invoice.
+    budgetRubHint: null as number | null,
     totals: {
       all: count(`SELECT COUNT(*) AS c FROM ai_reports`),
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       day: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, dayAgo),
       activeUsers: count(`SELECT COUNT(DISTINCT user_id) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status IN ('unavailable','error')`),
+      succeededMonth: recentOk,
     },
     byPlan,
+    recentErrors,
     limits: {
       free: Number(process.env.RENTPROOF_PLAN_FREE_AI ?? 5),
       plus: Number(process.env.RENTPROOF_PLAN_PLUS_AI ?? 40),
       pro: Number(process.env.RENTPROOF_PLAN_PRO_AI ?? 150),
     },
+    availability: process.env.RENTPROOF_AI_ENABLED === "0" ? "disabled_by_env" : "enabled",
+  };
+}
+
+export function dccSecurityCenter() {
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const dayAgo = new Date(Date.now() - 864e5).toISOString();
+  const ownerActions = getDb()
+    .prepare(
+      `SELECT a.id, a.action, a.entity_type, a.entity_id, a.created_at, u.email AS actor_email
+       FROM audit_log a
+       LEFT JOIN users u ON u.id = a.actor_id
+       WHERE u.staff_role = 'owner' OR a.action LIKE 'owner.%'
+       ORDER BY a.created_at DESC LIMIT 40`,
+    )
+    .all() as Array<{
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    created_at: string;
+    actor_email: string | null;
+  }>;
+  const adminActions = getDb()
+    .prepare(
+      `SELECT a.id, a.action, a.entity_type, a.entity_id, a.created_at, u.email AS actor_email
+       FROM audit_log a
+       JOIN users u ON u.id = a.actor_id
+       WHERE u.staff_role IN ('admin','moderator','support')
+       ORDER BY a.created_at DESC LIMIT 40`,
+    )
+    .all() as Array<{
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    created_at: string;
+    actor_email: string | null;
+  }>;
+  const recentBans = getDb()
+    .prepare(
+      `SELECT id, user_id, kind, reason, created_at, lifted_at FROM account_bans ORDER BY created_at DESC LIMIT 30`,
+    )
+    .all() as Array<{
+    id: string;
+    user_id: string;
+    kind: string;
+    reason: string;
+    created_at: string;
+    lifted_at: string | null;
+  }>;
+  const roleChanges = getDb()
+    .prepare(
+      `SELECT id, action, entity_id, created_at, meta FROM audit_log
+       WHERE action LIKE 'staff.%' OR action LIKE 'owner.%'
+       ORDER BY created_at DESC LIMIT 30`,
+    )
+    .all() as Array<{
+    id: string;
+    action: string;
+    entity_id: string | null;
+    created_at: string;
+    meta: string | null;
+  }>;
+  return {
+    loginFailuresDay: count(`SELECT COUNT(*) AS c FROM login_attempts WHERE attempted_at >= ?`, dayAgo),
+    loginFailuresWeek: count(`SELECT COUNT(*) AS c FROM login_attempts WHERE attempted_at >= ?`, weekAgo),
+    activeBans: count(`SELECT COUNT(*) AS c FROM account_bans WHERE lifted_at IS NULL`),
+    ownerActions,
+    adminActions,
+    recentBans,
+    roleChanges,
+  };
+}
+
+export function dccEmailCenter() {
+  const driver = (process.env.MAIL_DRIVER ?? "auto").trim().toLowerCase();
+  const resendKey = Boolean(process.env.RESEND_API_KEY?.trim());
+  const smtpHost = Boolean(process.env.SMTP_HOST?.trim());
+  let active: "resend" | "smtp" | "console" | "auto-unresolved" = "console";
+  if (driver === "resend" || (driver === "auto" && resendKey)) active = "resend";
+  else if (driver === "smtp" || (driver === "auto" && smtpHost)) active = "smtp";
+  else if (driver === "console") active = "console";
+  else if (driver === "auto") active = "auto-unresolved";
+
+  // No persistent mail_events table yet — report honestly from audit + verification tables.
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const verificationIssued = count(
+    `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'email.%' AND created_at >= ?`,
+    weekAgo,
+  );
+  const passwordResets = count(
+    `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'password.%' AND created_at >= ?`,
+    weekAgo,
+  );
+  return {
+    configured: mailConfigured(),
+    driverEnv: driver,
+    active,
+    resendKeyPresent: resendKey,
+    smtpHostPresent: smtpHost,
+    fromAddress: process.env.MAIL_FROM?.trim() || process.env.SMTP_FROM?.trim() || "(default)",
+    week: { verificationAndEmailAudit: verificationIssued, passwordRelatedAudit: passwordResets },
+    note: "История доставки Resend API в БД не зеркалится. Показаны audit-события и статус драйвера без секретов.",
   };
 }

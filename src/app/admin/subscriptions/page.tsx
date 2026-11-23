@@ -68,7 +68,7 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
             <p className="text-xs text-muted">
               {row.startedAt ? formatDateRu(row.startedAt) : "—"} → {row.expiresAt ? formatDateRu(row.expiresAt) : "∞"}
             </p>
-            <Link className="mt-2 inline-block font-semibold text-navy underline" href={`/admin/users/${row.userId}`}>
+            <Link className="mt-2 inline-block font-semibold text-navy underline" href={`/owner/users/${row.userId}`}>
               Карточка
             </Link>
           </article>
@@ -99,7 +99,7 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
                 <td>{row.startedAt ? formatDateRu(row.startedAt) : "—"}</td>
                 <td>{row.expiresAt ? formatDateRu(row.expiresAt) : "∞"}</td>
                 <td className="p-3">
-                  <Link className="font-semibold text-navy underline" href={`/admin/users/${row.userId}`}>
+                  <Link className="font-semibold text-navy underline" href={`/owner/users/${row.userId}`}>
                     Карточка
                   </Link>
                 </td>

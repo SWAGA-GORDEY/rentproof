@@ -65,7 +65,7 @@ async function Body() {
             {tickets.map((t) => (
               <tr key={t.id} className="border-t border-line">
                 <td className="p-3">
-                  <Link className="font-semibold text-navy underline" href={`/admin/support/${t.id}`}>
+                  <Link className="font-semibold text-navy underline" href={`/owner/support/${t.id}`}>
                     {t.subject}
                   </Link>
                 </td>

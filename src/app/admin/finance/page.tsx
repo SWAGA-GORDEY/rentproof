@@ -1,6 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { requireStaff } from "@/lib/current-user";
-import { dccFinance } from "@/lib/dcc";
+import { dccDashboard, dccFinance } from "@/lib/dcc";
 import { formatKopecks } from "@/lib/money";
 
 export default function AdminFinancePage() {
@@ -14,6 +15,8 @@ export default function AdminFinancePage() {
 async function Body() {
   await requireStaff("finance.view");
   const data = dccFinance();
+  const charts = dccDashboard().charts.revenueByDay;
+  const max = Math.max(1, ...charts.map((p) => p.count));
   return (
     <div className="grid gap-6">
       <div>
@@ -37,6 +40,24 @@ async function Body() {
         <Tile label="Доход 30 дн." value={formatKopecks(data.revenueKopecks.month)} />
         <Tile label="Доход всё время" value={formatKopecks(data.revenueKopecks.allTime)} />
       </div>
+      <section className="rounded-3xl border border-line bg-white p-5">
+        <h2 className="font-display text-xl font-semibold text-navy">Доход по дням (14 дн., succeeded only)</h2>
+        <div className="mt-4 flex h-28 items-end gap-1">
+          {charts.map((point) => (
+            <div
+              key={point.day}
+              title={`${point.day}: ${formatKopecks(point.count)}`}
+              className="w-full rounded-t-md bg-navy/80"
+              style={{ height: `${Math.max(4, (point.count / max) * 100)}%` }}
+            />
+          ))}
+        </div>
+      </section>
+      <p className="text-sm">
+        <Link className="font-semibold text-navy underline" href="/owner/payments">
+          Открыть список платежей →
+        </Link>
+      </p>
     </div>
   );
 }
