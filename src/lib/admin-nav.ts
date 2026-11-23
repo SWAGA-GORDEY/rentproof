@@ -6,6 +6,8 @@ export const dccNav: Array<{ href: string; label: string; permission?: Permissio
   { href: dccHref("/users"), label: "Users", permission: "users.view" },
   { href: dccHref("/staff"), label: "Admin Management", permission: "admins.manage" },
   { href: dccHref("/listings"), label: "Listings", permission: "listings.view" },
+  { href: dccHref("/bookings"), label: "Bookings & Deals", permission: "listings.view" },
+  { href: dccHref("/referrals"), label: "Referrals", permission: "users.view" },
   { href: dccHref("/subscriptions"), label: "Subscriptions", permission: "subscriptions.view" },
   { href: dccHref("/ai"), label: "AI Control Center", permission: "ai.view" },
   { href: dccHref("/finance"), label: "Finance", permission: "finance.view" },

@@ -302,7 +302,10 @@ function mapReport(row: ReportRow): AiReportRecord {
 }
 
 function countReports(userId: string): number {
-  const row = getDb().prepare("SELECT COUNT(*) AS count FROM ai_reports WHERE user_id = ?").get(userId) as { count: number };
+  // Only successful visual assessments burn quota. Provider/network failures do not.
+  const row = getDb()
+    .prepare(`SELECT COUNT(*) AS count FROM ai_reports WHERE user_id = ? AND status = 'completed'`)
+    .get(userId) as { count: number };
   return Number(row.count);
 }
 

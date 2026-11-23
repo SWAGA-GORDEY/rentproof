@@ -123,7 +123,7 @@ export function dccDashboard() {
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       day: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, dayAgo),
       users: count(`SELECT COUNT(DISTINCT user_id) AS c FROM ai_reports`),
-      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status = 'unavailable' OR status = 'error'`),
+      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status = 'unavailable' OR status = 'failed'`),
     },
     planDistribution,
     charts: { registrationsByDay, listingsByDay, aiByDay, revenueByDay, activeUsersByDay },
@@ -220,11 +220,11 @@ export function dccAiCenter() {
   const recentErrors = getDb()
     .prepare(
       `SELECT id, user_id, status, created_at FROM ai_reports
-       WHERE status IN ('unavailable','error') ORDER BY created_at DESC LIMIT 20`,
+       WHERE status IN ('unavailable','failed') ORDER BY created_at DESC LIMIT 20`,
     )
     .all() as Array<{ id: string; user_id: string; status: string; created_at: string }>;
   const recentOk = count(
-    `SELECT COUNT(*) AS c FROM ai_reports WHERE status NOT IN ('unavailable','error') AND created_at >= ?`,
+    `SELECT COUNT(*) AS c FROM ai_reports WHERE status NOT IN ('unavailable','failed') AND created_at >= ?`,
     monthAgo,
   );
   return {
@@ -244,7 +244,7 @@ export function dccAiCenter() {
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       day: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, dayAgo),
       activeUsers: count(`SELECT COUNT(DISTINCT user_id) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
-      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status IN ('unavailable','error')`),
+      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status IN ('unavailable','failed')`),
       succeededMonth: recentOk,
     },
     byPlan,

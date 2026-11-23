@@ -28,6 +28,9 @@ async function actor() {
 
 export async function saveListingAction(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await actor();
+  if (!user.emailVerified) {
+    redirect("/verify-email");
+  }
   try {
     assertFeatureAllowed(user.id, "listings");
   } catch (error) {
