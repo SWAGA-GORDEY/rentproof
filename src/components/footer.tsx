@@ -46,7 +46,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <p className="mx-auto max-w-6xl px-4 py-5 text-xs text-white/60 sm:px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          © 2026 RentProof. Расчёты и тарифы демонстрационные, платежи не списываются.
+          © 2026 RentProof. Списания через ЮKassa только при явно включённых платежах; иначе суммы на экране — расчёт.
         </p>
       </div>
     </footer>
