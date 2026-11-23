@@ -11,6 +11,7 @@ import { getDb } from "@/lib/db";
 import { ImageRejectedError, NotFoundError, PlanLimitError } from "@/lib/errors";
 import { listAiImages, saveAiImage, type StoredImage } from "@/lib/images";
 import { planAiLimit, type PlanId } from "@/lib/plans";
+import { readPlan } from "@/lib/subscriptions";
 
 export {
   aiConfigured,
@@ -300,14 +301,6 @@ function mapReport(row: ReportRow): AiReportRecord {
 function countReports(userId: string): number {
   const row = getDb().prepare("SELECT COUNT(*) AS count FROM ai_reports WHERE user_id = ?").get(userId) as { count: number };
   return Number(row.count);
-}
-
-function readPlan(userId: string): PlanId {
-  const row = getDb().prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string } | undefined;
-  if (row?.plan === "plus" || row?.plan === "pro") {
-    return row.plan;
-  }
-  return "free";
 }
 
 function text(value: unknown): string {
