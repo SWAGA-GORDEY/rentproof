@@ -17,7 +17,13 @@ import { DCC_HOME, OWNER_HOME } from "@/lib/staff-access";
  * skipped bind if the account was created after the first request in the process.
  */
 function bootstrapOwnerIfConfigured(): void {
-  ensureOwnerFromEnv();
+  try {
+    ensureOwnerFromEnv();
+  } catch (err) {
+    console.error("owner_bootstrap_failed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function getSessionToken(): Promise<string | null> {

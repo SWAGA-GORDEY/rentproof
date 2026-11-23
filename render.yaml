@@ -15,7 +15,7 @@ services:
     name: rentproof
     runtime: docker
     plan: starter
-    healthCheckPath: /api/ai/connection
+    healthCheckPath: /api/health
     # Optional: paid Persistent Disk for uploads / SQLite rollback. Free web has no disk.
     # disk:
     #   name: rentproof-data
@@ -34,8 +34,9 @@ services:
           property: connectionString
       - key: RENTPROOF_DB_DRIVER
         value: postgres
+      # Keep 0 for first empty bootstrap (no SQLite backup). Set to 1 after owner registers.
       - key: RENTPROOF_REQUIRE_NONEMPTY_POSTGRES
-        value: "1"
+        value: "0"
       - key: RENTPROOF_DB_PATH
         value: /data/rentproof.sqlite
       - key: RENTPROOF_UPLOAD_DIR
