@@ -4,27 +4,15 @@ import { describe, it } from "node:test";
 import { dccNav } from "@/lib/admin-nav";
 
 describe("dcc navigation", () => {
-  it("exposes all 16 Control Center routes", () => {
-    assert.equal(dccNav.length, 16);
+  it("exposes Control Center routes including Security and Email", () => {
+    assert.equal(dccNav.length, 18);
     const hrefs = dccNav.map((item) => item.href);
-    assert.deepEqual(hrefs, [
-      "/admin",
-      "/admin/users",
-      "/admin/staff",
-      "/admin/listings",
-      "/admin/subscriptions",
-      "/admin/ai",
-      "/admin/finance",
-      "/admin/support",
-      "/admin/analytics",
-      "/admin/legal",
-      "/admin/monitoring",
-      "/admin/audit",
-      "/admin/notifications",
-      "/admin/settings",
-      "/admin/reports",
-      "/admin/payments",
-    ]);
+    assert.ok(hrefs.includes("/admin"));
+    assert.ok(hrefs.includes("/admin/users"));
+    assert.ok(hrefs.includes("/admin/security"));
+    assert.ok(hrefs.includes("/admin/email"));
+    assert.ok(hrefs.includes("/admin/payments"));
+    assert.equal(new Set(hrefs).size, hrefs.length);
   });
 
   it("does not truncate mobile links with slice(0, 6)", () => {

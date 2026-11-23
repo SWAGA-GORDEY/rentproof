@@ -8,6 +8,9 @@ export const dccNav: Array<{ href: string; label: string; permission?: Permissio
   { href: "/admin/subscriptions", label: "Subscriptions", permission: "subscriptions.view" },
   { href: "/admin/ai", label: "AI Control Center", permission: "ai.view" },
   { href: "/admin/finance", label: "Finance", permission: "finance.view" },
+  { href: "/admin/payments", label: "Payments", permission: "finance.view" },
+  { href: "/admin/security", label: "Security Center", permission: "logs.view" },
+  { href: "/admin/email", label: "Email Center", permission: "settings.view" },
   { href: "/admin/support", label: "CRM & Support", permission: "support.view" },
   { href: "/admin/analytics", label: "Analytics", permission: "analytics.view" },
   { href: "/admin/legal", label: "Legal Center", permission: "legal.view" },
@@ -16,5 +19,4 @@ export const dccNav: Array<{ href: string; label: string; permission?: Permissio
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/settings", label: "System Settings", permission: "settings.view" },
   { href: "/admin/reports", label: "Complaints", permission: "listings.moderate" },
-  { href: "/admin/payments", label: "Payments", permission: "finance.view" },
 ];

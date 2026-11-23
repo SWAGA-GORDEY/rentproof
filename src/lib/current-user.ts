@@ -10,13 +10,14 @@ import {
 import { ensureOwnerFromEnv } from "@/lib/owner";
 import { loadStaffProfile, type Permission, type StaffProfile, hasPermission } from "@/lib/rbac";
 import { cookieIsSecure, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session-cookie";
+import { DCC_HOME, OWNER_HOME } from "@/lib/staff-access";
 
-let ownerBootstrapped = false;
-
+/**
+ * Always re-run OWNER bind (idempotent). A one-shot in-memory flag previously
+ * skipped bind if the account was created after the first request in the process.
+ */
 function bootstrapOwnerIfConfigured(): void {
-  if (ownerBootstrapped) return;
   ensureOwnerFromEnv();
-  ownerBootstrapped = true;
 }
 
 export async function getSessionToken(): Promise<string | null> {
@@ -39,22 +40,29 @@ export async function requireUser(): Promise<PublicUser> {
 }
 
 export async function requireAdmin(): Promise<PublicUser> {
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(DCC_HOME)}`);
+  }
   const staff = loadStaffProfile(user.id);
   if (!staff?.isAdmin) {
-    redirect("/account");
+    // Explicit denial page — never a fake 404.
+    redirect("/staff-access-denied");
   }
   return user;
 }
 
 export async function requireStaff(permission?: Permission): Promise<{ user: PublicUser; staff: StaffProfile }> {
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(OWNER_HOME)}`);
+  }
   const staff = loadStaffProfile(user.id);
   if (!staff?.isAdmin || !staff.emailVerified) {
-    redirect("/account");
+    redirect("/staff-access-denied");
   }
   if (permission && !hasPermission(staff, permission)) {
-    redirect("/admin?error=forbidden");
+    redirect(`${DCC_HOME}?error=forbidden`);
   }
   return { user, staff };
 }

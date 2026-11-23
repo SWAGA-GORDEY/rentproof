@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "4mb",
     },
   },
+  async redirects() {
+    // Case-variant aliases (/Admin) must NOT live here: Next can treat them as
+    // case-insensitive and loop /admin → /admin. Handle case in proxy.ts instead.
+    return [
+      { source: "/owner", destination: "/admin", permanent: false },
+      { source: "/owner/:path*", destination: "/admin/:path*", permanent: false },
+      { source: "/control-center", destination: "/admin", permanent: false },
+      { source: "/control-center/:path*", destination: "/admin/:path*", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

@@ -3,10 +3,13 @@ import Link from "next/link";
 import { markReadAction } from "@/app/actions/social";
 import { LogoutButton } from "@/components/logout-button";
 import { secondaryButton } from "@/components/styles";
+import { OwnerBadge } from "@/components/owner-badge";
 import { requireUser } from "@/lib/current-user";
 import { listBookingsForUser } from "@/lib/bookings";
 import { listNotifications, mailChannelStatus, unreadCount } from "@/lib/notifications";
+import { loadStaffProfile } from "@/lib/rbac";
 import { readPlan } from "@/lib/subscriptions";
+import { OWNER_HOME } from "@/lib/staff-access";
 import { roleLabel } from "@/lib/validation";
 
 export const metadata = { title: "Кабинет" };
@@ -22,6 +25,7 @@ export default function AccountPage() {
 async function Dashboard() {
   const user = await requireUser();
   const plan = readPlan(user.id);
+  const staff = loadStaffProfile(user.id);
   const notifications = listNotifications(user.id, 8);
   const unread = unreadCount(user.id);
   const bookings = listBookingsForUser(user.id, plan);
@@ -33,8 +37,21 @@ async function Dashboard() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold text-navy">Здравствуйте, {user.name}</h1>
-        <p className="mt-2 text-sm text-muted">{roleLabel(user.role)} · тариф {plan.toUpperCase()} · демонстрационный режим</p>
+        <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-3xl font-semibold text-navy">
+          Здравствуйте, {user.name}
+          {staff?.staffRole === "owner" ? <OwnerBadge /> : null}
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          {roleLabel(user.role)} · тариф {plan.toUpperCase()}
+          {staff?.staffRole === "owner" ? " · OWNER" : ""}
+        </p>
+        {staff?.isAdmin ? (
+          <p className="mt-3">
+            <Link className="rounded-xl bg-[#c41e3a] px-4 py-2 text-sm font-semibold text-white" href={OWNER_HOME}>
+              Открыть Owner Control Center
+            </Link>
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Непрочитанные" value={String(unread)} />

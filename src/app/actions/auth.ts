@@ -28,6 +28,7 @@ import {
   parseProfile,
   parseRegistration,
 } from "@/lib/validation";
+import { postLoginPath, safeStaffNext } from "@/lib/staff-access";
 
 export type FormState = {
   message?: string;
@@ -90,6 +91,8 @@ export async function loginAction(_state: FormState, formData: FormData): Promis
     return { fieldErrors: parsed.fieldErrors };
   }
 
+  const nextRaw = String(formData.get("next") ?? "");
+  let destination = "/account";
   try {
     const user = await authenticateUser(parsed.value.email, parsed.value.password);
     writeAudit(user.id, "auth.login", "user", user.id, null);
@@ -97,6 +100,8 @@ export async function loginAction(_state: FormState, formData: FormData): Promis
     if (!user.emailVerified) {
       redirect("/verify-email");
     }
+    const preferred = postLoginPath(user);
+    destination = nextRaw ? safeStaffNext(nextRaw, preferred) : preferred;
   } catch (error) {
     if (error instanceof LoginLockedError) {
       return { message: "Слишком много попыток входа. Подождите 15 минут и попробуйте снова." };
@@ -111,7 +116,7 @@ export async function loginAction(_state: FormState, formData: FormData): Promis
     return { message: "Не удалось войти. Попробуйте ещё раз." };
   }
 
-  redirect("/account");
+  redirect(destination);
 }
 
 export async function verifyEmailAction(_state: FormState, formData: FormData): Promise<FormState> {

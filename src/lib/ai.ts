@@ -69,6 +69,9 @@ export async function createAiReport(
   input: { objectType: string; description: string; knownDefects: string | null },
   files: Uint8Array[],
 ): Promise<string> {
+  if (process.env.RENTPROOF_AI_ENABLED === "0") {
+    throw new PlanLimitError("free", 0);
+  }
   const plan = readPlan(userId);
   const used = countReports(userId);
   const limit = planAiLimit(plan);
