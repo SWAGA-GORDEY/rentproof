@@ -1,0 +1,46 @@
+/**
+ * Stable FK-safe table order for SQLite → PostgreSQL copies.
+ * Parents before children. Never deletes source data.
+ */
+export const MIGRATE_TABLE_ORDER = [
+  "users",
+  "categories",
+  "legal_documents",
+  "sessions",
+  "login_attempts",
+  "email_verifications",
+  "password_resets",
+  "account_bans",
+  "admin_notes",
+  "user_badges",
+  "user_consents",
+  "platform_settings",
+  "admin_notifications",
+  "request_limits",
+  "contact_messages",
+  "audit_log",
+  "listings",
+  "listing_images",
+  "bookings",
+  "favorites",
+  "ai_reports",
+  "ai_report_images",
+  "condition_evidence",
+  "condition_evidence_images",
+  "notifications",
+  "subscriptions",
+  "complaints",
+  "customers",
+  "customer_interactions",
+  "support_tickets",
+  "support_ticket_messages",
+  "reviews",
+  "payments",
+  "payment_events",
+  "payment_idempotency",
+  "rental_orders",
+  "refunds",
+  "payouts",
+] as const;
+
+export type MigrateTableName = (typeof MIGRATE_TABLE_ORDER)[number];

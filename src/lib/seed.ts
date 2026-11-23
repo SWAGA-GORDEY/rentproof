@@ -1,9 +1,9 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RentproofDb } from "@/lib/sql";
 import { categories } from "@/lib/categories";
 import { foldSearch } from "@/lib/format";
 
 /** Categories only. Demo listings and demo owner are intentionally not seeded. */
-export function seed(db: DatabaseSync): void {
+export function seed(db: RentproofDb): void {
   const upsertCategory = db.prepare(
     `INSERT INTO categories (id, name, description, sort_order) VALUES (?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description, sort_order = excluded.sort_order`,
@@ -27,7 +27,7 @@ export function seed(db: DatabaseSync): void {
   }
 }
 
-function purgeDemoListings(db: DatabaseSync): void {
+function purgeDemoListings(db: RentproofDb): void {
   const demoIds = db
     .prepare(
       `SELECT id FROM listings WHERE is_demo = 1 OR id LIKE 'demo-%' OR owner_id = 'demo-owner'`,

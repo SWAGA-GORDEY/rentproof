@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ensureDataSubdirectory, getDb } from "@/lib/db";
 import { ForbiddenError, ImageRejectedError, NotFoundError } from "@/lib/errors";
@@ -18,7 +18,12 @@ export type StoredImage = {
 export function uploadRoot(): string {
   const configured = process.env.RENTPROOF_UPLOAD_DIR?.trim();
   if (configured) return configured;
-  if (process.env.RENDER === "true") return "/data/uploads";
+  if (process.env.RENDER === "true") {
+    // Prefer persistent disk when present; diskless free plans need an explicit env
+    // (or ephemeral /tmp — images only, never account data).
+    if (existsSync("/data")) return "/data/uploads";
+    return "/tmp/rentproof-uploads";
+  }
   return path.join(process.cwd(), "data", "uploads");
 }
 

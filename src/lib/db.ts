@@ -1,17 +1,35 @@
 import { accessSync, constants, existsSync, mkdirSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 import { migrate } from "@/lib/schema";
 import { seed } from "@/lib/seed";
+import type { RentproofDb } from "@/lib/sql";
 
-let database: DatabaseSync | null = null;
+const require = createRequire(import.meta.url);
+
+function openPostgresDatabase(connectionString: string): RentproofDb {
+  const runtimePath = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "pg-database-runtime.cjs",
+  );
+  const runtime = require(/*turbopackIgnore: true*/ runtimePath) as {
+    openPostgresDatabase: (url: string) => RentproofDb;
+  };
+  return runtime.openPostgresDatabase(connectionString);
+}
+
+let database: RentproofDb | null = null;
 let persistenceWarned = false;
 
-/** Render persistent disk mount path — never mkdir this from the app. */
+/** Render persistent disk mount path — never mkdir this from the app (SQLite mode). */
 export const RENDER_DISK_MOUNT = "/data";
 
 /** Canonical SQLite filename on the Render persistent disk. */
 export const RENDER_SQLITE_PATH = "/data/rentproof.sqlite";
+
+export type DbDriver = "sqlite" | "postgres";
 
 function persistenceEnforced(): boolean {
   return (
@@ -21,13 +39,26 @@ function persistenceEnforced(): boolean {
 }
 
 /**
+ * Resolve active driver.
+ * Default remains **sqlite** so a stray DATABASE_URL never flips Production onto an
+ * empty Postgres by accident. Cutover requires an explicit
+ * `RENTPROOF_DB_DRIVER=postgres` (plus DATABASE_URL) after verified migration.
+ */
+export function resolveDbDriver(): DbDriver {
+  const explicit = process.env.RENTPROOF_DB_DRIVER?.trim().toLowerCase();
+  if (explicit === "postgres" || explicit === "postgresql") return "postgres";
+  return "sqlite";
+}
+
+export function databaseUrl(): string {
+  return process.env.DATABASE_URL?.trim() ?? "";
+}
+
+/**
  * Resolve the SQLite file path.
  * - Non-empty `RENTPROOF_DB_PATH` wins (trimmed).
  * - On Render, empty/missing env defaults to `/data/rentproof.sqlite` (never cwd).
  * - Local/dev defaults to `./data/rentproof.sqlite` under cwd.
- *
- * Important: empty-string env must not win over the Render default (`??` alone
- * treats "" as set and previously resolved to an ephemeral `/app/data/...` path).
  */
 export function databasePath(): string {
   const configured = process.env.RENTPROOF_DB_PATH?.trim();
@@ -51,17 +82,17 @@ export function isRenderDiskMount(dir: string): boolean {
 
 /**
  * On Render (or when explicitly required), SQLite must live on the persistent
- * disk (/data/...). Ephemeral container FS loses accounts on every redeploy.
- * Local `next build` / tests are not blocked. Never wipes or migrates data.
+ * disk (/data/...). Skipped when using managed Postgres (DATABASE_URL).
  */
 export function assertDurableDatabasePath(file = databasePath()): void {
+  if (resolveDbDriver() === "postgres") return;
   if (!persistenceEnforced()) return;
   const normalized = path.resolve(file);
   if (isPersistentDiskPath(normalized)) return;
   const message =
     `RENTPROOF_DB_PATH must point at the Render persistent disk (expected ${RENDER_SQLITE_PATH}). ` +
     `Resolved path "${normalized}" would lose accounts on redeploy. ` +
-    `Set RENTPROOF_DB_PATH=${RENDER_SQLITE_PATH} in Render Environment (do not leave it blank).`;
+    `Set RENTPROOF_DB_PATH=${RENDER_SQLITE_PATH}, or migrate to Postgres (DATABASE_URL) after a verified copy.`;
   if (process.env.RENTPROOF_ALLOW_EPHEMERAL_DB === "1") {
     if (!persistenceWarned) {
       console.error("db_persistence_warning", { reason: "ephemeral_allowed", path: normalized });
@@ -72,17 +103,14 @@ export function assertDurableDatabasePath(file = databasePath()): void {
   throw new Error(message);
 }
 
-/**
- * Verify the Render disk mount exists and is usable.
- * Never creates `/data` — the platform must mount it.
- */
 export function assertPersistentDiskMount(mount = RENDER_DISK_MOUNT): void {
+  if (resolveDbDriver() === "postgres") return;
   if (!persistenceEnforced()) return;
   if (!existsSync(mount)) {
     throw new Error(
       `Persistent disk mount "${mount}" is missing. ` +
-        `Attach a Render disk to this service with Mount Path ${mount}. ` +
-        `The app will not create ${mount} (that causes EACCES).`,
+        `Attach a Render disk with Mount Path ${mount}, or complete a verified migration to Render Postgres ` +
+        `(DATABASE_URL + RENTPROOF_DB_DRIVER=postgres). The app will not create ${mount} (that causes EACCES).`,
     );
   }
   let st;
@@ -90,8 +118,7 @@ export function assertPersistentDiskMount(mount = RENDER_DISK_MOUNT): void {
     st = statSync(mount);
   } catch (err) {
     throw new Error(
-      `Persistent disk mount "${mount}" could not be read (${err instanceof Error ? err.message : String(err)}). ` +
-        `Check the Render disk is attached at ${mount}.`,
+      `Persistent disk mount "${mount}" could not be read (${err instanceof Error ? err.message : String(err)}).`,
     );
   }
   if (!st.isDirectory()) {
@@ -102,53 +129,57 @@ export function assertPersistentDiskMount(mount = RENDER_DISK_MOUNT): void {
   } catch {
     throw new Error(
       `Persistent disk mount "${mount}" is not accessible (need read+execute). ` +
-        `Fix the Render disk mount/permissions; do not chown the whole disk from the app.`,
+        `Fix Render disk permissions; do not chown the whole disk from the app.`,
     );
   }
 }
 
-/**
- * On Render, refuse to invent an empty production DB if the persistent file is missing.
- * Local/dev may create the file (first run).
- */
 export function assertExistingProductionDatabase(file = databasePath()): void {
+  if (resolveDbDriver() === "postgres") return;
   if (!persistenceEnforced()) return;
   if (process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB === "1") return;
   if (existsSync(file)) return;
   throw new Error(
     `SQLite file not found at "${path.resolve(file)}". ` +
-      `Refusing to create an empty production database (would look like lost accounts). ` +
-      `Restore the file on the /data disk or set RENTPROOF_ALLOW_CREATE_EMPTY_DB=1 only for intentional bootstrap.`,
+      `Refusing to create an empty production database. ` +
+      `Restore the file on /data, or migrate from a SQLite backup into Postgres before cutover.`,
   );
 }
 
-/** Confirm an existing SQLite file is readable/writable without modifying it. */
 export function assertSqliteFileAccessible(file: string): void {
+  if (resolveDbDriver() === "postgres") return;
   if (!existsSync(file)) return;
   try {
     accessSync(file, constants.R_OK | constants.W_OK);
   } catch {
     throw new Error(
-      `SQLite at "${path.resolve(file)}" is not readable/writable by the app process. ` +
-        `Check ownership/permissions on the Render disk file (do not delete or recreate it).`,
+      `SQLite at "${path.resolve(file)}" is not readable/writable by the app process.`,
     );
   }
 }
 
-/**
- * Ensure the SQLite parent directory exists when appropriate.
- * Never mkdir the Render mount point `/data` itself (EACCES on Render).
- * Only creates subdirectories under `/data` after the mount is verified,
- * or local `./data` for development.
- */
+export function assertPostgresConfigured(): void {
+  if (resolveDbDriver() !== "postgres") return;
+  const url = databaseUrl();
+  if (!url) {
+    throw new Error(
+      "RENTPROOF_DB_DRIVER=postgres requires DATABASE_URL (Render Postgres connection string). " +
+        "Do not cut over until migrate-sqlite-to-postgres has verified row counts.",
+    );
+  }
+  if (process.env.RENTPROOF_REQUIRE_NONEMPTY_POSTGRES === "1") {
+    // Optional post-cutover safety: refuse empty users table (set after first successful migrate).
+    // Checked lazily in getDb after open.
+  }
+}
+
 export function ensureSqliteParentDirectory(file: string): void {
+  if (resolveDbDriver() === "postgres") return;
   const dir = path.dirname(path.resolve(file));
   if (isRenderDiskMount(dir)) {
-    // Mount must already exist — never mkdir('/data').
     if (!existsSync(dir)) {
       throw new Error(
-        `Persistent disk mount "${dir}" is missing. ` +
-          `Attach a Render disk with Mount Path ${dir}. The app will not create ${dir}.`,
+        `Persistent disk mount "${dir}" is missing. The app will not create ${dir}.`,
       );
     }
     assertPersistentDiskMount(dir);
@@ -158,8 +189,7 @@ export function ensureSqliteParentDirectory(file: string): void {
   if (dir.startsWith(`${mount}${path.sep}`)) {
     if (!existsSync(mount)) {
       throw new Error(
-        `Persistent disk mount "${mount}" is missing. Cannot create "${dir}". ` +
-          `Attach a Render disk with Mount Path ${mount}; do not mkdir ${mount} from the app.`,
+        `Persistent disk mount "${mount}" is missing. Cannot create "${dir}".`,
       );
     }
     assertPersistentDiskMount(mount);
@@ -169,10 +199,6 @@ export function ensureSqliteParentDirectory(file: string): void {
   mkdirSync(dir, { recursive: true });
 }
 
-/**
- * Ensure an upload directory under the persistent disk (or local data/).
- * Never mkdir `/data` itself; create only nested dirs like `/data/uploads`.
- */
 export function ensureDataSubdirectory(dir: string): void {
   const resolved = path.resolve(dir);
   if (isRenderDiskMount(resolved)) {
@@ -181,28 +207,34 @@ export function ensureDataSubdirectory(dir: string): void {
         `Persistent disk mount "${resolved}" is missing. The app will not create it.`,
       );
     }
-    assertPersistentDiskMount(resolved);
+    if (resolveDbDriver() === "sqlite") assertPersistentDiskMount(resolved);
     return;
   }
   const mount = path.resolve(RENDER_DISK_MOUNT);
   if (resolved.startsWith(`${mount}${path.sep}`)) {
     if (!existsSync(mount)) {
       throw new Error(
-        `Persistent disk mount "${mount}" is missing. Cannot create "${resolved}".`,
+        `Persistent disk mount "${mount}" is missing. Cannot create "${resolved}". ` +
+          `On diskless Render plans use object storage or a writable upload dir, not /data.`,
       );
     }
-    assertPersistentDiskMount(mount);
+    if (resolveDbDriver() === "sqlite") assertPersistentDiskMount(mount);
     mkdirSync(resolved, { recursive: true });
     return;
   }
   mkdirSync(resolved, { recursive: true });
 }
 
-export function getDb(): DatabaseSync {
-  if (database) {
-    return database;
-  }
+function wrapSqlite(raw: DatabaseSync): RentproofDb {
+  return {
+    driver: "sqlite",
+    prepare: (sql) => raw.prepare(sql),
+    exec: (sql) => raw.exec(sql),
+    close: () => raw.close(),
+  };
+}
 
+function openSqlite(): RentproofDb {
   const file = databasePath();
   assertDurableDatabasePath(file);
   if (isPersistentDiskPath(file) || persistenceEnforced()) {
@@ -211,8 +243,36 @@ export function getDb(): DatabaseSync {
   assertExistingProductionDatabase(file);
   assertSqliteFileAccessible(file);
   ensureSqliteParentDirectory(file);
-  const next = new DatabaseSync(file);
+  return wrapSqlite(new DatabaseSync(file));
+}
+
+function openPostgres(): RentproofDb {
+  assertPostgresConfigured();
+  return openPostgresDatabase(databaseUrl());
+}
+
+export function getDb(): RentproofDb {
+  if (database) {
+    return database;
+  }
+
+  const driver = resolveDbDriver();
+  const next = driver === "postgres" ? openPostgres() : openSqlite();
   migrate(next);
+  if (
+    driver === "postgres" &&
+    process.env.RENTPROOF_REQUIRE_NONEMPTY_POSTGRES === "1"
+  ) {
+    const row = next.prepare(`SELECT COUNT(*) AS c FROM users`).get() as { c: number | string };
+    const count = Number(row?.c ?? 0);
+    if (count < 1) {
+      next.close();
+      throw new Error(
+        "PostgreSQL users table is empty. Refusing to serve production on an empty migrated DB. " +
+          "Run migrate-sqlite-to-postgres against a SQLite backup first, then verify counts.",
+      );
+    }
+  }
   database = next;
   // seed() only upserts categories + purges legacy demo listings — never wipes users.
   seed(next);

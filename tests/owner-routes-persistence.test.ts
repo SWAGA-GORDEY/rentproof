@@ -73,28 +73,35 @@ describe("owner routes + persistence guards", () => {
     const prevUpload = process.env.RENTPROOF_UPLOAD_DIR;
     const prevRequire = process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
     const prevAllowCreate = process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB;
+    const prevDriver = process.env.RENTPROOF_DB_DRIVER;
 
-    process.env.RENDER = "true";
-    process.env.RENTPROOF_DB_PATH = "   ";
-    delete process.env.RENTPROOF_UPLOAD_DIR;
-    delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
-    delete process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB;
+    try {
+      process.env.RENDER = "true";
+      process.env.RENTPROOF_DB_PATH = "   ";
+      process.env.RENTPROOF_DB_DRIVER = "sqlite";
+      delete process.env.RENTPROOF_UPLOAD_DIR;
+      delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+      delete process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB;
 
-    assert.equal(databasePath(), RENDER_SQLITE_PATH);
-    assert.equal(uploadRoot(), "/data/uploads");
-    assert.doesNotThrow(() => assertDurableDatabasePath());
-    assert.throws(() => assertExistingProductionDatabase("/data/definitely-missing-rentproof.sqlite"));
-
-    if (prevRender === undefined) delete process.env.RENDER;
-    else process.env.RENDER = prevRender;
-    if (prevDb === undefined) delete process.env.RENTPROOF_DB_PATH;
-    else process.env.RENTPROOF_DB_PATH = prevDb;
-    if (prevUpload === undefined) delete process.env.RENTPROOF_UPLOAD_DIR;
-    else process.env.RENTPROOF_UPLOAD_DIR = prevUpload;
-    if (prevRequire === undefined) delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
-    else process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = prevRequire;
-    if (prevAllowCreate === undefined) delete process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB;
-    else process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB = prevAllowCreate;
+      assert.equal(databasePath(), RENDER_SQLITE_PATH);
+      // Diskless free plans fall back to /tmp for images only; with /data present use /data/uploads.
+      assert.match(uploadRoot(), /^(\/data\/uploads|\/tmp\/rentproof-uploads)$/);
+      assert.doesNotThrow(() => assertDurableDatabasePath());
+      assert.throws(() => assertExistingProductionDatabase("/data/definitely-missing-rentproof.sqlite"));
+    } finally {
+      if (prevRender === undefined) delete process.env.RENDER;
+      else process.env.RENDER = prevRender;
+      if (prevDb === undefined) delete process.env.RENTPROOF_DB_PATH;
+      else process.env.RENTPROOF_DB_PATH = prevDb;
+      if (prevUpload === undefined) delete process.env.RENTPROOF_UPLOAD_DIR;
+      else process.env.RENTPROOF_UPLOAD_DIR = prevUpload;
+      if (prevRequire === undefined) delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+      else process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = prevRequire;
+      if (prevAllowCreate === undefined) delete process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB;
+      else process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB = prevAllowCreate;
+      if (prevDriver === undefined) delete process.env.RENTPROOF_DB_DRIVER;
+      else process.env.RENTPROOF_DB_DRIVER = prevDriver;
+    }
   });
 
   it("seed does not delete arbitrary users", () => {

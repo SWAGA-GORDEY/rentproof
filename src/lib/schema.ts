@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RentproofDb } from "@/lib/sql";
 
 const USER_COLUMNS: Array<[string, string]> = [
   ["is_admin", "INTEGER NOT NULL DEFAULT 0"],
@@ -6,10 +6,12 @@ const USER_COLUMNS: Array<[string, string]> = [
   ["plan", "TEXT NOT NULL DEFAULT 'free'"],
 ];
 
-export function migrate(db: DatabaseSync): void {
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-  db.exec("PRAGMA busy_timeout = 5000;");
+export function migrate(db: RentproofDb): void {
+  if (db.driver === "sqlite") {
+    db.exec("PRAGMA journal_mode = WAL;");
+    db.exec("PRAGMA foreign_keys = ON;");
+    db.exec("PRAGMA busy_timeout = 5000;");
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -586,7 +588,17 @@ export function migrate(db: DatabaseSync): void {
   `);
 }
 
-function hasColumn(db: DatabaseSync, table: string, column: string): boolean {
+function hasColumn(db: RentproofDb, table: string, column: string): boolean {
+  if (db.driver === "postgres") {
+    const row = db
+      .prepare(
+        `SELECT 1 AS ok
+         FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = ? AND column_name = ?`,
+      )
+      .get(table, column) as { ok: number } | undefined;
+    return Boolean(row);
+  }
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   return rows.some((row) => row.name === column);
 }

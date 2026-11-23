@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   output: "standalone",
   poweredByHeader: false,
+  // Keep pg outside the bundle; queries run in pg-sync-worker.mjs via worker_threads.
+  serverExternalPackages: ["pg"],
   images: {
     localPatterns: [{ pathname: "/media/**" }],
   },
