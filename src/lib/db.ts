@@ -140,7 +140,7 @@ export function assertExistingProductionDatabase(file = databasePath()): void {
   if (process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB === "1") return;
   if (existsSync(file)) return;
   throw new Error(
-    `SQLite file not found at "${path.resolve(file)}". ` +
+    `SQLite file not found at "${path.resolve(/*turbopackIgnore: true*/ file)}". ` +
       `Refusing to create an empty production database. ` +
       `Restore the file on /data, or migrate from a SQLite backup into Postgres before cutover.`,
   );
@@ -153,7 +153,7 @@ export function assertSqliteFileAccessible(file: string): void {
     accessSync(file, constants.R_OK | constants.W_OK);
   } catch {
     throw new Error(
-      `SQLite at "${path.resolve(file)}" is not readable/writable by the app process.`,
+      `SQLite at "${path.resolve(/*turbopackIgnore: true*/ file)}" is not readable/writable by the app process.`,
     );
   }
 }

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { getDb } from "@/lib/db";
 import { ConsoleMailAdapter } from "@/lib/mail/console-adapter";
 import { ResendMailAdapter } from "@/lib/mail/resend-adapter";
 import { SmtpMailAdapter } from "@/lib/mail/smtp-adapter";
@@ -24,15 +26,62 @@ export function getMailAdapter(): MailAdapter {
   return new ConsoleMailAdapter();
 }
 
+function recordMailDelivery(input: {
+  adapter: string;
+  to: string;
+  subject: string;
+  delivered: boolean;
+  providerId?: string;
+  errorCode?: string;
+}): void {
+  try {
+    // Never store message body (may contain verification codes).
+    getDb()
+      .prepare(
+        `INSERT INTO mail_delivery_log (
+           id, adapter, recipient_domain, subject, delivered, provider_id, error_code, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        randomUUID(),
+        input.adapter,
+        input.to.includes("@") ? input.to.split("@")[1]!.toLowerCase() : "unknown",
+        input.subject.slice(0, 180),
+        input.delivered ? 1 : 0,
+        input.providerId ?? null,
+        input.errorCode ?? null,
+        new Date().toISOString(),
+      );
+  } catch (error) {
+    console.error("mail_delivery_log_failed", {
+      name: error instanceof Error ? error.name : "error",
+    });
+  }
+}
+
 export async function sendMail(message: MailMessage): Promise<{ delivered: boolean; adapter: string }> {
   const adapter = getMailAdapter();
   try {
     const result = await adapter.send(message);
+    recordMailDelivery({
+      adapter: adapter.name,
+      to: message.to,
+      subject: message.subject,
+      delivered: result.delivered,
+      providerId: result.providerId,
+    });
     return { delivered: result.delivered, adapter: adapter.name };
   } catch (error) {
     console.error("mail_send_failed", {
       adapter: adapter.name,
       name: error instanceof Error ? error.name : "error",
+    });
+    recordMailDelivery({
+      adapter: adapter.name,
+      to: message.to,
+      subject: message.subject,
+      delivered: false,
+      errorCode: error instanceof Error ? error.message.slice(0, 80) : "send_failed",
     });
     return { delivered: false, adapter: adapter.name };
   }

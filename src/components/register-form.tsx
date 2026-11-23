@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { registerAction, type FormState } from "@/app/actions/auth";
 import { fieldClass, primaryButton } from "@/components/styles";
 
@@ -9,9 +10,12 @@ const initialState: FormState = {};
 
 export function RegisterForm() {
   const [state, action, pending] = useActionState(registerAction, initialState);
+  const searchParams = useSearchParams();
+  const referralCode = (searchParams.get("ref") ?? "").trim().toUpperCase();
 
   return (
     <form action={action} className="grid gap-4 rounded-3xl border border-line bg-white p-6" noValidate>
+      {referralCode ? <input type="hidden" name="ref" value={referralCode} /> : null}
       <TextField label="Имя" name="name" autoComplete="name" error={state.fieldErrors?.name} />
       <TextField label="Электронная почта" name="email" type="email" autoComplete="email" error={state.fieldErrors?.email} />
       <TextField

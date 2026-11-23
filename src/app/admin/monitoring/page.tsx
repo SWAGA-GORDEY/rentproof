@@ -19,7 +19,7 @@ async function Body() {
   const errors = listRecentAudit(100).filter((e) => e.action.includes("fail") || e.action.includes("error"));
   const aiErrors = getDb()
     .prepare(
-      `SELECT id, status, created_at FROM ai_reports WHERE status IN ('unavailable','error') ORDER BY created_at DESC LIMIT 20`,
+      `SELECT id, status, created_at FROM ai_reports WHERE status IN ('unavailable','failed') ORDER BY created_at DESC LIMIT 20`,
     )
     .all() as Array<{ id: string; status: string; created_at: string }>;
 

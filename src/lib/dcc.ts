@@ -339,7 +339,6 @@ export function dccEmailCenter() {
   else if (driver === "console") active = "console";
   else if (driver === "auto") active = "auto-unresolved";
 
-  // No persistent mail_events table yet — report honestly from audit + verification tables.
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   const verificationIssued = count(
     `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'email.%' AND created_at >= ?`,
@@ -349,6 +348,28 @@ export function dccEmailCenter() {
     `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'password.%' AND created_at >= ?`,
     weekAgo,
   );
+  const deliveredWeek = count(
+    `SELECT COUNT(*) AS c FROM mail_delivery_log WHERE delivered = 1 AND created_at >= ?`,
+    weekAgo,
+  );
+  const failedWeek = count(
+    `SELECT COUNT(*) AS c FROM mail_delivery_log WHERE delivered = 0 AND created_at >= ?`,
+    weekAgo,
+  );
+  const recent = getDb()
+    .prepare(
+      `SELECT id, adapter, recipient_domain, subject, delivered, error_code, created_at
+       FROM mail_delivery_log ORDER BY created_at DESC LIMIT 20`,
+    )
+    .all() as Array<{
+    id: string;
+    adapter: string;
+    recipient_domain: string;
+    subject: string;
+    delivered: number;
+    error_code: string | null;
+    created_at: string;
+  }>;
   return {
     configured: mailConfigured(),
     driverEnv: driver,
@@ -356,7 +377,21 @@ export function dccEmailCenter() {
     resendKeyPresent: resendKey,
     smtpHostPresent: smtpHost,
     fromAddress: process.env.MAIL_FROM?.trim() || process.env.SMTP_FROM?.trim() || "(default)",
-    week: { verificationAndEmailAudit: verificationIssued, passwordRelatedAudit: passwordResets },
-    note: "История доставки Resend API в БД не зеркалится. Показаны audit-события и статус драйвера без секретов.",
+    week: {
+      verificationAndEmailAudit: verificationIssued,
+      passwordRelatedAudit: passwordResets,
+      delivered: deliveredWeek,
+      failedOrConsole: failedWeek,
+    },
+    recentDeliveries: recent.map((row) => ({
+      id: row.id,
+      adapter: row.adapter,
+      recipientDomain: row.recipient_domain,
+      subject: row.subject,
+      delivered: row.delivered === 1,
+      errorCode: row.error_code,
+      createdAt: row.created_at,
+    })),
+    note: "Тела писем и коды не хранятся. delivered=true только при подтверждённом ответе провайдера (например id от Resend).",
   };
 }

@@ -540,7 +540,42 @@ export function migrate(db: RentproofDb): void {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS admin_notifications_created ON admin_notifications(created_at);
+
+    -- Delivery outcomes only (no bodies / codes). Used by Email Center.
+    CREATE TABLE IF NOT EXISTS mail_delivery_log (
+      id TEXT PRIMARY KEY,
+      adapter TEXT NOT NULL,
+      recipient_domain TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      delivered INTEGER NOT NULL DEFAULT 0,
+      provider_id TEXT,
+      error_code TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS mail_delivery_log_created ON mail_delivery_log(created_at);
+    CREATE INDEX IF NOT EXISTS mail_delivery_log_delivered ON mail_delivery_log(delivered, created_at);
+
+    -- Referral invites: tracking only — no automatic cash rewards.
+    CREATE TABLE IF NOT EXISTS referral_codes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      code TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS referral_codes_code ON referral_codes(code);
+
+    CREATE TABLE IF NOT EXISTS referral_attributions (
+      id TEXT PRIMARY KEY,
+      referral_code_id TEXT NOT NULL REFERENCES referral_codes(id) ON DELETE CASCADE,
+      referrer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS referral_attributions_referrer ON referral_attributions(referrer_id, created_at);
   `);
+
+  // Search helper index (SQLite ignores IF NOT EXISTS on some versions — safe recreate via CREATE INDEX IF NOT EXISTS).
+  db.exec(`CREATE INDEX IF NOT EXISTS listings_search_text ON listings(search_text);`);
 
   const staffColumns: Array<[string, string]> = [
     ["staff_role", "TEXT"],

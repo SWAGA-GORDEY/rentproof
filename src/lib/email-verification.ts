@@ -75,6 +75,12 @@ export function verifyEmailCode(userId: string, code: string): { ok: true } | { 
   }
   const now = new Date().toISOString();
   getDb().prepare(`UPDATE email_verifications SET verified_at = ? WHERE id = ?`).run(now, row.id);
+  // Invalidate sibling codes so a successful verify is strictly one-shot for the account.
+  getDb()
+    .prepare(
+      `UPDATE email_verifications SET verified_at = COALESCE(verified_at, ?) WHERE user_id = ? AND id != ? AND verified_at IS NULL`,
+    )
+    .run(now, userId, row.id);
   getDb()
     .prepare(`UPDATE users SET email_verified = 1, email_verified_at = ?, updated_at = ? WHERE id = ?`)
     .run(now, now, userId);
