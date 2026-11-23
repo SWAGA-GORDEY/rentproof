@@ -16,7 +16,10 @@ export type StoredImage = {
 };
 
 export function uploadRoot(): string {
-  return process.env.RENTPROOF_UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads");
+  const configured = process.env.RENTPROOF_UPLOAD_DIR?.trim();
+  if (configured) return configured;
+  if (process.env.RENDER === "true") return "/data/uploads";
+  return path.join(process.cwd(), "data", "uploads");
 }
 
 export function sniffImage(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {

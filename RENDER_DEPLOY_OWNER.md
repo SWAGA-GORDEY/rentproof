@@ -26,12 +26,14 @@ Or squash-merge the tip of `cursor/owner-ultimate-dcc-f2a8` after review.
 | Key | Value |
 |-----|--------|
 | `OWNER_EMAIL` | `gordey.tomozov@mail.ru` (must already be a registered user) |
-| `RENTPROOF_DB_PATH` | `/data/rentproof.sqlite` |
+| `RENTPROOF_DB_PATH` | `/data/rentproof.sqlite` (**must not be blank** — blank overrides Docker default and caused HTTP 500) |
 | `RENTPROOF_UPLOAD_DIR` | `/data/uploads` |
 | `MAIL_DRIVER` / `RESEND_API_KEY` / `MAIL_FROM` | keep existing Resend setup |
 | Persistent disk | mount `/data` (see `render.yaml`) |
 
-After changing `OWNER_EMAIL`: **Manual Deploy / Restart**.
+If `RENTPROOF_DB_PATH` exists in the Dashboard as an empty variable, either set it to `/data/rentproof.sqlite` or **delete** the empty key so the Docker/`RENDER=true` default applies.
+
+After changing env: **Manual Deploy / Restart**.
 
 ## Verify after deploy
 

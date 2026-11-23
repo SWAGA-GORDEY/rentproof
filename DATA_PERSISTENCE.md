@@ -35,7 +35,9 @@ Copies the live file to a timestamped backup. Verify restore offline before dele
 
 ## Required Render env (no secrets in Git)
 
-- `RENTPROOF_DB_PATH=/data/rentproof.sqlite`
+- `RENTPROOF_DB_PATH=/data/rentproof.sqlite` — **never leave blank** in the Dashboard (blank string is treated as “set” by some platforms and used to break defaults)
 - `RENTPROOF_UPLOAD_DIR=/data/uploads`
 - Persistent disk mounted at `/data`
 - `OWNER_EMAIL=gordey.tomozov@mail.ru` (existing account email)
+
+On `RENDER=true`, if `RENTPROOF_DB_PATH` is missing/blank, the app defaults to `/data/rentproof.sqlite`. Protection against ephemeral paths stays enabled. Missing DB file on Render fails loudly instead of creating an empty production DB (unless `RENTPROOF_ALLOW_CREATE_EMPTY_DB=1` for intentional bootstrap).
