@@ -27,20 +27,36 @@ export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true
     | undefined;
 
   if (user) {
-    const code = String(randomInt(100000, 999999));
     const now = new Date();
-    getDb()
-      .prepare(
-        `INSERT INTO password_resets (id, user_id, token_hash, expires_at, used_at, created_at)
-         VALUES (?, ?, ?, ?, NULL, ?)`,
-      )
-      .run(
-        randomUUID(),
-        user.id,
-        hashResetSecret(code),
-        new Date(now.getTime() + CODE_TTL_MS).toISOString(),
-        now.toISOString(),
-      );
+    let code = "";
+    let inserted = false;
+    // 6-digit codes can collide historically under UNIQUE(token_hash) — retry.
+    for (let attempt = 0; attempt < 12 && !inserted; attempt++) {
+      code = String(randomInt(100000, 999999));
+      try {
+        getDb()
+          .prepare(
+            `INSERT INTO password_resets (id, user_id, token_hash, expires_at, used_at, created_at)
+             VALUES (?, ?, ?, ?, NULL, ?)`,
+          )
+          .run(
+            randomUUID(),
+            user.id,
+            hashResetSecret(code),
+            new Date(now.getTime() + CODE_TTL_MS).toISOString(),
+            now.toISOString(),
+          );
+        inserted = true;
+      } catch {
+        inserted = false;
+      }
+    }
+    if (!inserted || !code) {
+      return {
+        ok: true,
+        note: "Не удалось выпустить код сброса. Повторите попытку чуть позже.",
+      };
+    }
 
     const resetUrl = absoluteUrl(`/reset-password?email=${encodeURIComponent(user.email)}`);
     const mail = buildCodeEmail({

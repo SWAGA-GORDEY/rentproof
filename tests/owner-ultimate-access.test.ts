@@ -40,6 +40,8 @@ describe("owner ultimate access", () => {
     const email = uniqueEmail("ult-own");
     const owner = await registerUser({ name: "Ult Owner", email, password, role: "landlord" });
     getDb().prepare(`UPDATE users SET email_verified = 1 WHERE id = ?`).run(owner.id);
+    // Shared test DBs may already have an owner from other suites.
+    getDb().prepare(`UPDATE users SET staff_role = NULL WHERE staff_role = 'owner'`).run();
 
     process.env.OWNER_EMAIL = email;
     ensureOwnerFromEnv();
