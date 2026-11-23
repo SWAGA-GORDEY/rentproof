@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { refreshBanState } from "@/lib/bans";
+import { enforceSubscriptionExpiry } from "@/lib/subscription-lifecycle";
 import { getDb } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-cookie";
@@ -127,15 +128,16 @@ export async function authenticateUser(email: string, password: string): Promise
   }
 
   refreshBanState(row.id);
-  const fresh = db.prepare("SELECT blocked_at FROM users WHERE id = ?").get(row.id) as { blocked_at: string | null };
+  enforceSubscriptionExpiry(row.id);
+  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(row.id) as UserRow;
   if (fresh.blocked_at) {
     throw new AccountBlockedError();
   }
 
   db.prepare("DELETE FROM login_attempts WHERE email = ?").run(normalized);
   const now = new Date().toISOString();
-  db.prepare("UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?").run(now, now, row.id);
-  return toPublicUser(row);
+  db.prepare("UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?").run(now, now, fresh.id);
+  return toPublicUser(fresh);
 }
 
 export class InvalidCredentialsError extends Error {
@@ -176,6 +178,7 @@ export function readSessionUser(token: string, nowIso: string): PublicUser | nul
     return null;
   }
   refreshBanState(row.id);
+  enforceSubscriptionExpiry(row.id);
   const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(row.id) as UserRow | undefined;
   if (!fresh) return null;
   const user = toPublicUser(fresh);

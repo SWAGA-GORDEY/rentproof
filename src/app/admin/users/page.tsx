@@ -108,15 +108,19 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
                     </div>
                   </td>
                   <td>{row.email}</td>
-                  <td>{row.plan}</td>
+                  <td className="font-semibold uppercase text-navy">{row.plan}</td>
                   <td>
-                    {row.blocked_at ? "blocked" : "active"}
+                    {row.blocked_at ? (
+                      <span className="font-semibold text-red-700">blocked</span>
+                    ) : (
+                      "active"
+                    )}
                     {row.email_verified ? "" : " · unverified"}
                   </td>
                   <td>{formatDateRu(row.created_at)}</td>
                   <td className="p-3">
                     <Link className="font-semibold text-navy underline" href={`/admin/users/${row.id}`}>
-                      Открыть
+                      Открыть профиль
                     </Link>
                   </td>
                 </tr>

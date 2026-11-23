@@ -7,7 +7,8 @@ import { foldSearch, todayUtc } from "@/lib/format";
 import { listListingImages, type StoredImage } from "@/lib/images";
 import { notifyUser } from "@/lib/notifications";
 import { listingAutoPublishEnabled } from "@/lib/plan-config";
-import { planListingLimit, type PlanId } from "@/lib/plans";
+import { planListingLimit } from "@/lib/plans";
+import { readPlan } from "@/lib/subscriptions";
 
 export type ListingStatus = "draft" | "pending" | "published" | "rejected" | "archived";
 
@@ -386,14 +387,6 @@ function assertPlanCapacity(ownerId: string, exceptId?: string): void {
   if (countActiveListings(ownerId, exceptId) >= limit) {
     throw new PlanLimitError(plan, limit);
   }
-}
-
-function readPlan(userId: string): PlanId {
-  const row = getDb().prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string } | undefined;
-  if (row?.plan === "plus" || row?.plan === "pro") {
-    return row.plan;
-  }
-  return "free";
 }
 
 function requireOwned(actorId: string, listingId: string): ListingRecord {

@@ -19,12 +19,15 @@ import { ensureLegalDrafts, getLatestLegalDocument, type LegalDocType } from "@/
 import { assignManualBadge, isManualBadgeKind, revokeManualBadge } from "@/lib/user-badges";
 
 export async function dccBanUserAction(formData: FormData): Promise<void> {
-  const { user, staff } = await requireStaff("users.ban");
+  const { user } = await requireStaff("users.ban");
   const userId = String(formData.get("userId") ?? "");
   const kind = String(formData.get("kind") ?? "permanent");
   const reason = String(formData.get("reason") ?? "");
   const days = Number(formData.get("days") ?? "7");
+  const confirm = String(formData.get("confirmBan") ?? "") === "1";
   const features = ["listings", "bookings", "ai", "crm"].filter((feature) => formData.get(`feature_${feature}`) === "on");
+  if (!confirm) redirect(`/admin/users/${userId}?error=ban_confirm`);
+  if (reason.trim().length < 3) redirect(`/admin/users/${userId}?error=ban_reason`);
   try {
     banUser({
       actorId: user.id,
@@ -35,18 +38,22 @@ export async function dccBanUserAction(formData: FormData): Promise<void> {
       features,
     });
   } catch (error) {
-    if (error instanceof ForbiddenError || error instanceof NotFoundError) {
-      redirect(`/admin/users/${userId}?error=ban`);
+    if (error instanceof ForbiddenError) {
+      redirect(`/admin/users/${userId}?error=ban_owner`);
     }
-    throw error;
+    if (error instanceof NotFoundError) {
+      redirect(`/admin/users/${userId}?error=ban_missing`);
+    }
+    redirect(`/admin/users/${userId}?error=ban`);
   }
-  void staff;
   redirect(`/admin/users/${userId}?saved=ban`);
 }
 
 export async function dccUnbanUserAction(formData: FormData): Promise<void> {
   const { user } = await requireStaff("users.unban");
   const userId = String(formData.get("userId") ?? "");
+  const confirm = String(formData.get("confirmUnban") ?? "") === "1";
+  if (!confirm) redirect(`/admin/users/${userId}?error=unban_confirm`);
   try {
     liftBan(user.id, userId);
   } catch {
@@ -95,6 +102,10 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
     redirect(`/admin/users/${userId}?error=starts`);
   }
 
+  if (reason.trim().length < 3) {
+    redirect(`/admin/users/${userId}?error=grant_reason`);
+  }
+
   try {
     grantSubscription({
       actorId: user.id,
@@ -107,12 +118,15 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
       startsAt,
     });
   } catch (error) {
-    if (error instanceof ForbiddenError || error instanceof NotFoundError) {
-      redirect(`/admin/users/${userId}?error=grant`);
+    if (error instanceof ForbiddenError) {
+      redirect(`/admin/users/${userId}?error=grant_forbidden`);
     }
-    throw error;
+    if (error instanceof NotFoundError) {
+      redirect(`/admin/users/${userId}?error=grant_missing`);
+    }
+    redirect(`/admin/users/${userId}?error=grant`);
   }
-  redirect(`/admin/users/${userId}?saved=grant`);
+  redirect(`/admin/users/${userId}?saved=grant&plan=${planRaw}`);
 }
 
 export async function dccRevokeSubscriptionAction(formData: FormData): Promise<void> {
