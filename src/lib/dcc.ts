@@ -76,6 +76,22 @@ export function dccDashboard() {
     subscriptionsActive: count(
       `SELECT COUNT(*) AS c FROM subscriptions WHERE status = 'active' AND plan IN ('plus','pro')`,
     ),
+    subscriptionsPlus: count(
+      `SELECT COUNT(*) AS c FROM subscriptions WHERE status = 'active' AND plan = 'plus'`,
+    ),
+    subscriptionsPro: count(
+      `SELECT COUNT(*) AS c FROM subscriptions WHERE status = 'active' AND plan = 'pro'`,
+    ),
+    paymentsSucceeded: count(`SELECT COUNT(*) AS c FROM payments WHERE status = 'succeeded'`),
+    revenueMonthKopecks: Number(
+      (
+        getDb()
+          .prepare(
+            `SELECT COALESCE(SUM(amount_kopecks), 0) AS s FROM payments WHERE status = 'succeeded' AND created_at >= ?`,
+          )
+          .get(monthAgo) as { s: number }
+      ).s,
+    ),
     ai: {
       total: count(`SELECT COUNT(*) AS c FROM ai_reports`),
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
@@ -102,23 +118,64 @@ export function dccDashboard() {
   };
 }
 
+function sumSucceededKopecks(sinceIso: string | null): number {
+  const row = sinceIso
+    ? (getDb()
+        .prepare(
+          `SELECT COALESCE(SUM(amount_kopecks), 0) AS s FROM payments WHERE status = 'succeeded' AND created_at >= ?`,
+        )
+        .get(sinceIso) as { s: number })
+    : (getDb()
+        .prepare(`SELECT COALESCE(SUM(amount_kopecks), 0) AS s FROM payments WHERE status = 'succeeded'`)
+        .get() as { s: number });
+  return Number(row.s);
+}
+
 export function dccFinance() {
+  const now = Date.now();
+  const dayAgo = new Date(now - 864e5).toISOString();
+  const weekAgo = new Date(now - 7 * 864e5).toISOString();
+  const monthAgo = new Date(now - 30 * 864e5).toISOString();
+
   const plus = count(`SELECT COUNT(*) AS c FROM users WHERE plan = 'plus'`);
   const pro = count(`SELECT COUNT(*) AS c FROM users WHERE plan = 'pro'`);
   const free = count(`SELECT COUNT(*) AS c FROM users WHERE plan = 'free' OR plan IS NULL OR plan = ''`);
+  const plusPaid = count(
+    `SELECT COUNT(*) AS c FROM users u
+     JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
+     WHERE u.plan = 'plus' AND s.source_kind = 'paid'`,
+  );
+  const proPaid = count(
+    `SELECT COUNT(*) AS c FROM users u
+     JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
+     WHERE u.plan = 'pro' AND s.source_kind = 'paid'`,
+  );
   const plusPrice = plans.find((p) => p.id === "plus")?.price ?? 299;
   const proPrice = plans.find((p) => p.id === "pro")?.price ?? 799;
-  const potentialMonthly = plus * plusPrice + pro * proPrice;
+  // Potential from PAID plans only — owner/admin grants are not revenue.
+  const potentialMonthlyPaidOnly = plusPaid * plusPrice + proPaid * proPrice;
   const paidTx = count(`SELECT COUNT(*) AS c FROM payments WHERE status = 'succeeded'`);
+  const failedTx = count(`SELECT COUNT(*) AS c FROM payments WHERE status IN ('canceled','failed')`);
+  const refunds = count(`SELECT COUNT(*) AS c FROM refunds WHERE status = 'succeeded'`);
   const billing = billingStatus();
   return {
     free,
     plus,
     pro,
-    potentialMonthly,
+    plusPaid,
+    proPaid,
+    potentialMonthly: potentialMonthlyPaidOnly,
     paidTransactions: paidTx,
+    failedTransactions: failedTx,
+    refundsSucceeded: refunds,
+    revenueKopecks: {
+      today: sumSucceededKopecks(dayAgo),
+      week: sumSucceededKopecks(weekAgo),
+      month: sumSucceededKopecks(monthAgo),
+      allTime: sumSucceededKopecks(null),
+    },
     billing,
-    note: "Потенциальная выручка ≠ фактически полученные деньги. Платежи выключены, пока RENTPROOF_PAYMENTS_ENABLED≠1.",
+    note: "Выручка только из payments.status=succeeded. OWNER_GRANT / ADMIN_GRANTED в выручку не входят.",
   };
 }
 
