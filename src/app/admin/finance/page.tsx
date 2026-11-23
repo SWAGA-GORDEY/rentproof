@@ -54,7 +54,7 @@ async function Body() {
         </div>
       </section>
       <p className="text-sm">
-        <Link className="font-semibold text-navy underline" href="/admin/payments">
+        <Link className="font-semibold text-navy underline" href="/owner/payments">
           Открыть список платежей →
         </Link>
       </p>

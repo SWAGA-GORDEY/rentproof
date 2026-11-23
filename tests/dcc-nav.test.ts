@@ -7,11 +7,11 @@ describe("dcc navigation", () => {
   it("exposes Control Center routes including Security and Email", () => {
     assert.equal(dccNav.length, 18);
     const hrefs = dccNav.map((item) => item.href);
-    assert.ok(hrefs.includes("/admin"));
-    assert.ok(hrefs.includes("/admin/users"));
-    assert.ok(hrefs.includes("/admin/security"));
-    assert.ok(hrefs.includes("/admin/email"));
-    assert.ok(hrefs.includes("/admin/payments"));
+    assert.ok(hrefs.includes("/owner"));
+    assert.ok(hrefs.includes("/owner/users"));
+    assert.ok(hrefs.includes("/owner/security"));
+    assert.ok(hrefs.includes("/owner/email"));
+    assert.ok(hrefs.includes("/owner/payments"));
     assert.equal(new Set(hrefs).size, hrefs.length);
   });
 

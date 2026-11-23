@@ -62,7 +62,7 @@ export async function requireStaff(permission?: Permission): Promise<{ user: Pub
     redirect("/staff-access-denied");
   }
   if (permission && !hasPermission(staff, permission)) {
-    redirect(`${DCC_HOME}?error=forbidden`);
+    redirect(`${OWNER_HOME}?error=forbidden`);
   }
   return { user, staff };
 }

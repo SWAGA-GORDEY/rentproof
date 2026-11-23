@@ -88,18 +88,18 @@ async function Body() {
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
-            <Link className="rounded-xl bg-[#c41e3a] px-3 py-2 font-semibold text-white" href={`/admin/users/${staff.id}`}>
+            <Link className="rounded-xl bg-[#c41e3a] px-3 py-2 font-semibold text-white" href={`/owner/users/${staff.id}`}>
               Моя карточка / подписка
             </Link>
             <Link
               className="rounded-xl border border-[#c41e3a]/40 bg-black/20 px-3 py-2 font-semibold text-[#ffb3bf]"
-              href="/admin/subscriptions"
+              href="/owner/subscriptions"
             >
               Подписки
             </Link>
             <Link
               className="rounded-xl border border-white/15 bg-black/20 px-3 py-2 font-semibold text-slate-200"
-              href="/admin/security"
+              href="/owner/security"
             >
               Security
             </Link>
@@ -152,7 +152,7 @@ async function Body() {
       <div className="flex flex-wrap gap-3 text-sm">
         <Link
           className={`rounded-xl px-4 py-2 font-semibold ${dark ? "bg-[#c41e3a] text-white" : "bg-navy text-white"}`}
-          href="/admin/users"
+          href="/owner/users"
         >
           Users
         </Link>
@@ -160,7 +160,7 @@ async function Body() {
           className={`rounded-xl border px-4 py-2 font-semibold ${
             dark ? "border-white/15 text-slate-100" : "border-line bg-white"
           }`}
-          href="/admin/subscriptions"
+          href="/owner/subscriptions"
         >
           Subscriptions
         </Link>
@@ -168,7 +168,7 @@ async function Body() {
           className={`rounded-xl border px-4 py-2 font-semibold ${
             dark ? "border-white/15 text-slate-100" : "border-line bg-white"
           }`}
-          href="/admin/finance"
+          href="/owner/finance"
         >
           Finance
         </Link>
@@ -176,7 +176,7 @@ async function Body() {
           className={`rounded-xl border px-4 py-2 font-semibold ${
             dark ? "border-white/15 text-slate-100" : "border-line bg-white"
           }`}
-          href="/admin/email"
+          href="/owner/email"
         >
           Email
         </Link>

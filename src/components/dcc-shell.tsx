@@ -5,6 +5,7 @@ import { OwnerBadge } from "@/components/owner-badge";
 import { dccNav } from "@/lib/admin-nav";
 import { roleLabel, type StaffProfile, hasPermission } from "@/lib/rbac";
 import { logoutAction } from "@/app/actions/auth";
+import { OWNER_HOME, dccHref } from "@/lib/staff-access";
 
 export function DccShell({
   staff,
@@ -29,7 +30,7 @@ export function DccShell({
             isOwner ? "border-white/10 bg-black/25 backdrop-blur" : "border-line/80 bg-white/90"
           }`}
         >
-          <Link href="/owner" className={`font-display text-2xl font-semibold ${isOwner ? "text-white" : "text-navy"}`}>
+          <Link href={OWNER_HOME} className={`font-display text-2xl font-semibold ${isOwner ? "text-white" : "text-navy"}`}>
             RentProof
           </Link>
           <p
@@ -66,7 +67,7 @@ export function DccShell({
                 links={links.map((item) => ({ href: item.href, label: item.label }))}
                 dark={isOwner}
               />
-              <form action="/admin/users" className="min-w-[12rem] flex-1 sm:max-w-sm">
+              <form action={dccHref("/users")} className="min-w-[12rem] flex-1 sm:max-w-sm">
                 <input
                   name="q"
                   placeholder="Поиск пользователей…"
@@ -79,7 +80,7 @@ export function DccShell({
               </form>
               <div className="flex items-center gap-3 text-sm">
                 <Link
-                  href="/admin/notifications"
+                  href={dccHref("/notifications")}
                   className={`font-semibold ${isOwner ? "text-slate-200" : "text-navy"}`}
                 >
                   Уведомления

@@ -20,11 +20,12 @@ function uniqueEmail(prefix: string): string {
 describe("owner ultimate access", () => {
   it("nav includes security + email and redirects aliases exist in next.config", () => {
     const hrefs = dccNav.map((item) => item.href);
-    assert.ok(hrefs.includes("/admin/security"));
-    assert.ok(hrefs.includes("/admin/email"));
+    assert.ok(hrefs.includes("/owner/security"));
+    assert.ok(hrefs.includes("/owner/email"));
     assert.ok(dccNav.length >= 16);
 
     const config = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
+    assert.match(config, /rewrites\s*\(/);
     assert.match(config, /source:\s*"\/owner"/);
     assert.match(config, /source:\s*"\/control-center"/);
     assert.equal(config.includes('source: "/Admin"'), false);

@@ -75,7 +75,12 @@ export function DccMobileNav({ links, dark = false }: { links: DccNavLink[]; dar
           </div>
           <ul className="mx-auto grid max-h-[70vh] max-w-[1400px] gap-0.5 overflow-y-auto px-4 py-3 sm:px-6">
             {filtered.map((item) => {
-              const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
+              const active =
+                pathname === item.href ||
+                (item.href !== "/owner" &&
+                  item.href !== "/admin" &&
+                  (pathname.startsWith(`${item.href}/`) ||
+                    pathname.startsWith(`/admin${item.href.slice("/owner".length)}/`)));
               return (
                 <li key={item.href}>
                   <Link

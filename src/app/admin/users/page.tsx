@@ -119,7 +119,7 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
                   </td>
                   <td>{formatDateRu(row.created_at)}</td>
                   <td className="p-3">
-                    <Link className="font-semibold text-navy underline" href={`/admin/users/${row.id}`}>
+                    <Link className="font-semibold text-navy underline" href={`/owner/users/${row.id}`}>
                       Открыть профиль
                     </Link>
                   </td>
@@ -131,13 +131,13 @@ async function Body({ searchParams }: { searchParams: Promise<Query> }) {
       </div>
       <div className="flex gap-2 text-sm">
         {page > 1 ? (
-          <Link href={`/admin/users?q=${encodeURIComponent(q)}&plan=${plan}&status=${status}&page=${page - 1}`}>←</Link>
+          <Link href={`/owner/users?q=${encodeURIComponent(q)}&plan=${plan}&status=${status}&page=${page - 1}`}>←</Link>
         ) : null}
         <span>
           стр. {page} / {Math.max(1, Math.ceil(total / pageSize))}
         </span>
         {page * pageSize < total ? (
-          <Link href={`/admin/users?q=${encodeURIComponent(q)}&plan=${plan}&status=${status}&page=${page + 1}`}>→</Link>
+          <Link href={`/owner/users?q=${encodeURIComponent(q)}&plan=${plan}&status=${status}&page=${page + 1}`}>→</Link>
         ) : null}
       </div>
     </div>

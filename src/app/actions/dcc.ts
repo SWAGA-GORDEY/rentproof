@@ -26,8 +26,8 @@ export async function dccBanUserAction(formData: FormData): Promise<void> {
   const days = Number(formData.get("days") ?? "7");
   const confirm = String(formData.get("confirmBan") ?? "") === "1";
   const features = ["listings", "bookings", "ai", "crm"].filter((feature) => formData.get(`feature_${feature}`) === "on");
-  if (!confirm) redirect(`/admin/users/${userId}?error=ban_confirm`);
-  if (reason.trim().length < 3) redirect(`/admin/users/${userId}?error=ban_reason`);
+  if (!confirm) redirect(`/owner/users/${userId}?error=ban_confirm`);
+  if (reason.trim().length < 3) redirect(`/owner/users/${userId}?error=ban_reason`);
   try {
     banUser({
       actorId: user.id,
@@ -39,27 +39,27 @@ export async function dccBanUserAction(formData: FormData): Promise<void> {
     });
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      redirect(`/admin/users/${userId}?error=ban_owner`);
+      redirect(`/owner/users/${userId}?error=ban_owner`);
     }
     if (error instanceof NotFoundError) {
-      redirect(`/admin/users/${userId}?error=ban_missing`);
+      redirect(`/owner/users/${userId}?error=ban_missing`);
     }
-    redirect(`/admin/users/${userId}?error=ban`);
+    redirect(`/owner/users/${userId}?error=ban`);
   }
-  redirect(`/admin/users/${userId}?saved=ban`);
+  redirect(`/owner/users/${userId}?saved=ban`);
 }
 
 export async function dccUnbanUserAction(formData: FormData): Promise<void> {
   const { user } = await requireStaff("users.unban");
   const userId = String(formData.get("userId") ?? "");
   const confirm = String(formData.get("confirmUnban") ?? "") === "1";
-  if (!confirm) redirect(`/admin/users/${userId}?error=unban_confirm`);
+  if (!confirm) redirect(`/owner/users/${userId}?error=unban_confirm`);
   try {
     liftBan(user.id, userId);
   } catch {
-    redirect(`/admin/users/${userId}?error=unban`);
+    redirect(`/owner/users/${userId}?error=unban`);
   }
-  redirect(`/admin/users/${userId}?saved=unban`);
+  redirect(`/owner/users/${userId}?saved=unban`);
 }
 
 export async function dccGrantSubscriptionAction(formData: FormData): Promise<void> {
@@ -72,11 +72,11 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
   const note = String(formData.get("note") ?? "");
   const confirmIndefinite = String(formData.get("confirmIndefinite") ?? "") === "1";
 
-  if (!isPlanId(planRaw)) redirect(`/admin/users/${userId}?error=plan`);
+  if (!isPlanId(planRaw)) redirect(`/owner/users/${userId}?error=plan`);
   let days: number | null = Number(duration);
   if (duration === "indefinite") {
     if (staff.staffRole !== "owner" || !confirmIndefinite) {
-      redirect(`/admin/users/${userId}?error=indefinite`);
+      redirect(`/owner/users/${userId}?error=indefinite`);
     }
     days = null;
   } else if (!(GRANT_DURATIONS_DAYS as readonly number[]).includes(days)) {
@@ -88,7 +88,7 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
     sourceKind = source;
   } else if (source === "owner_grant") {
     if (staff.staffRole !== "owner") {
-      redirect(`/admin/users/${userId}?error=owner_grant`);
+      redirect(`/owner/users/${userId}?error=owner_grant`);
     }
     sourceKind = "owner_grant";
   } else if (staff.staffRole === "owner") {
@@ -99,11 +99,11 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
   const startsRaw = String(formData.get("startsAt") ?? "").trim();
   const startsAt = startsRaw ? new Date(startsRaw).toISOString() : undefined;
   if (startsRaw && Number.isNaN(Date.parse(startsRaw))) {
-    redirect(`/admin/users/${userId}?error=starts`);
+    redirect(`/owner/users/${userId}?error=starts`);
   }
 
   if (reason.trim().length < 3) {
-    redirect(`/admin/users/${userId}?error=grant_reason`);
+    redirect(`/owner/users/${userId}?error=grant_reason`);
   }
 
   try {
@@ -119,14 +119,14 @@ export async function dccGrantSubscriptionAction(formData: FormData): Promise<vo
     });
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      redirect(`/admin/users/${userId}?error=grant_forbidden`);
+      redirect(`/owner/users/${userId}?error=grant_forbidden`);
     }
     if (error instanceof NotFoundError) {
-      redirect(`/admin/users/${userId}?error=grant_missing`);
+      redirect(`/owner/users/${userId}?error=grant_missing`);
     }
-    redirect(`/admin/users/${userId}?error=grant`);
+    redirect(`/owner/users/${userId}?error=grant`);
   }
-  redirect(`/admin/users/${userId}?saved=grant&plan=${planRaw}`);
+  redirect(`/owner/users/${userId}?saved=grant&plan=${planRaw}`);
 }
 
 export async function dccRevokeSubscriptionAction(formData: FormData): Promise<void> {
@@ -134,13 +134,13 @@ export async function dccRevokeSubscriptionAction(formData: FormData): Promise<v
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "revoked");
   const confirm = String(formData.get("confirm") ?? "") === "1";
-  if (!confirm) redirect(`/admin/users/${userId}?error=confirm`);
+  if (!confirm) redirect(`/owner/users/${userId}?error=confirm`);
   try {
     revokeToFree(user.id, userId, reason);
   } catch {
-    redirect(`/admin/users/${userId}?error=revoke`);
+    redirect(`/owner/users/${userId}?error=revoke`);
   }
-  redirect(`/admin/users/${userId}?saved=revoke`);
+  redirect(`/owner/users/${userId}?saved=revoke`);
 }
 
 export async function dccExtendSubscriptionAction(formData: FormData): Promise<void> {
@@ -151,9 +151,9 @@ export async function dccExtendSubscriptionAction(formData: FormData): Promise<v
   try {
     extendSubscription(user.id, userId, Math.max(1, days), reason);
   } catch {
-    redirect(`/admin/users/${userId}?error=extend`);
+    redirect(`/owner/users/${userId}?error=extend`);
   }
-  redirect(`/admin/users/${userId}?saved=extend`);
+  redirect(`/owner/users/${userId}?saved=extend`);
 }
 
 export async function dccAssignStaffAction(formData: FormData): Promise<void> {
@@ -161,7 +161,7 @@ export async function dccAssignStaffAction(formData: FormData): Promise<void> {
   const email = String(formData.get("email") ?? "");
   const role = String(formData.get("role") ?? "moderator");
   const displayName = String(formData.get("displayName") ?? "");
-  if (!isStaffRole(role) || role === "owner") redirect("/admin/staff?error=role");
+  if (!isStaffRole(role) || role === "owner") redirect("/owner/staff?error=role");
   const permissions = ASSIGNABLE_PERMISSIONS.filter((perm) => formData.get(`perm_${perm}`) === "on");
   try {
     assignStaff({
@@ -173,11 +173,11 @@ export async function dccAssignStaffAction(formData: FormData): Promise<void> {
     });
   } catch (error) {
     if (error instanceof ForbiddenError || error instanceof NotFoundError) {
-      redirect("/admin/staff?error=assign");
+      redirect("/owner/staff?error=assign");
     }
     throw error;
   }
-  redirect("/admin/staff?saved=1");
+  redirect("/owner/staff?saved=1");
 }
 
 export async function dccUpdateStaffAction(formData: FormData): Promise<void> {
@@ -197,9 +197,9 @@ export async function dccUpdateStaffAction(formData: FormData): Promise<void> {
       disabled: disabled === "1" ? true : disabled === "0" ? false : undefined,
     });
   } catch {
-    redirect("/admin/staff?error=update");
+    redirect("/owner/staff?error=update");
   }
-  redirect("/admin/staff?saved=1");
+  redirect("/owner/staff?saved=1");
 }
 
 export async function dccRevokeStaffAction(formData: FormData): Promise<void> {
@@ -208,9 +208,9 @@ export async function dccRevokeStaffAction(formData: FormData): Promise<void> {
   try {
     revokeStaff(user.id, userId);
   } catch {
-    redirect("/admin/staff?error=revoke");
+    redirect("/owner/staff?error=revoke");
   }
-  redirect("/admin/staff?saved=1");
+  redirect("/owner/staff?saved=1");
 }
 
 export async function dccModerateListingAction(formData: FormData): Promise<void> {
@@ -219,7 +219,7 @@ export async function dccModerateListingAction(formData: FormData): Promise<void
   const decision = String(formData.get("decision") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
   if (decision !== "published" && decision !== "rejected" && decision !== "archived") {
-    redirect("/admin/listings");
+    redirect("/owner/listings");
   }
   try {
     if (decision === "archived") {
@@ -231,21 +231,21 @@ export async function dccModerateListingAction(formData: FormData): Promise<void
       moderateListing(user.id, listingId, decision === "published" ? "published" : "rejected", reason || null);
     }
   } catch {
-    redirect("/admin/listings?error=1");
+    redirect("/owner/listings?error=1");
   }
-  redirect("/admin/listings?saved=1");
+  redirect("/owner/listings?saved=1");
 }
 
 export async function dccAddAdminNoteAction(formData: FormData): Promise<void> {
   const { user } = await requireStaff("users.edit");
   const userId = String(formData.get("userId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  if (body.length < 2) redirect(`/admin/users/${userId}?error=note`);
+  if (body.length < 2) redirect(`/owner/users/${userId}?error=note`);
   getDb()
     .prepare(`INSERT INTO admin_notes (id, user_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)`)
     .run(randomUUID(), userId, user.id, body, new Date().toISOString());
   writeAudit(user.id, "user.note", "user", userId, null);
-  redirect(`/admin/users/${userId}?saved=note`);
+  redirect(`/owner/users/${userId}?saved=note`);
 }
 
 export async function dccSaveSettingAction(formData: FormData): Promise<void> {
@@ -255,9 +255,9 @@ export async function dccSaveSettingAction(formData: FormData): Promise<void> {
   try {
     setSetting(user.id, key, value);
   } catch {
-    redirect("/admin/settings?error=1");
+    redirect("/owner/settings?error=1");
   }
-  redirect("/admin/settings?saved=1");
+  redirect("/owner/settings?saved=1");
 }
 
 export async function dccMarkNotificationAction(formData: FormData): Promise<void> {
@@ -266,7 +266,7 @@ export async function dccMarkNotificationAction(formData: FormData): Promise<voi
   const all = String(formData.get("all") ?? "") === "1";
   if (all) markAllAdminNotificationsRead();
   else if (id) markAdminNotificationRead(id);
-  redirect("/admin/notifications");
+  redirect("/owner/notifications");
 }
 
 export async function dccCreateTicketAction(formData: FormData): Promise<void> {
@@ -277,9 +277,9 @@ export async function dccCreateTicketAction(formData: FormData): Promise<void> {
   const body = String(formData.get("body") ?? "");
   try {
     const id = createTicket({ userId, category, subject, body, actorId: user.id });
-    redirect(`/admin/support/${id}`);
+    redirect(`/owner/support/${id}`);
   } catch {
-    redirect("/admin/support?error=1");
+    redirect("/owner/support?error=1");
   }
 }
 
@@ -295,7 +295,7 @@ export async function dccUpdateTicketAction(formData: FormData): Promise<void> {
   if (message) {
     addTicketMessage(user.id, ticketId, message, String(formData.get("internal") ?? "") === "1");
   }
-  redirect(`/admin/support/${ticketId}`);
+  redirect(`/owner/support/${ticketId}`);
 }
 
 export async function dccSaveLegalDraftAction(formData: FormData): Promise<void> {
@@ -306,7 +306,7 @@ export async function dccSaveLegalDraftAction(formData: FormData): Promise<void>
   const body = String(formData.get("body") ?? "");
   const version = String(formData.get("version") ?? "").trim() || `draft-${Date.now()}`;
   const current = getLatestLegalDocument(docType);
-  if (!current) redirect("/admin/legal?error=missing");
+  if (!current) redirect("/owner/legal?error=missing");
   getDb()
     .prepare(
       `INSERT INTO legal_documents (id, doc_type, version, title, body_md, status, created_at, published_at)
@@ -314,7 +314,7 @@ export async function dccSaveLegalDraftAction(formData: FormData): Promise<void>
     )
     .run(randomUUID(), docType, version, title || current.title, body || current.bodyMd, new Date().toISOString());
   writeAudit(user.id, "legal.draft", "legal", docType, { version });
-  redirect("/admin/legal?saved=1");
+  redirect("/owner/legal?saved=1");
 }
 
 export async function dccAssignBadgeAction(formData: FormData): Promise<void> {
@@ -322,16 +322,16 @@ export async function dccAssignBadgeAction(formData: FormData): Promise<void> {
   const userId = String(formData.get("userId") ?? "");
   const kind = String(formData.get("kind") ?? "");
   const reason = String(formData.get("reason") ?? "");
-  if (!isManualBadgeKind(kind)) redirect(`/admin/users/${userId}?error=badge`);
+  if (!isManualBadgeKind(kind)) redirect(`/owner/users/${userId}?error=badge`);
   try {
     assignManualBadge({ actorId: user.id, userId, kind, reason });
   } catch (error) {
     if (error instanceof ForbiddenError || error instanceof NotFoundError) {
-      redirect(`/admin/users/${userId}?error=badge`);
+      redirect(`/owner/users/${userId}?error=badge`);
     }
     throw error;
   }
-  redirect(`/admin/users/${userId}?saved=badge`);
+  redirect(`/owner/users/${userId}?saved=badge`);
 }
 
 export async function dccRevokeBadgeAction(formData: FormData): Promise<void> {
@@ -342,7 +342,7 @@ export async function dccRevokeBadgeAction(formData: FormData): Promise<void> {
   try {
     revokeManualBadge({ actorId: user.id, badgeId, reason });
   } catch {
-    redirect(`/admin/users/${userId}?error=badge`);
+    redirect(`/owner/users/${userId}?error=badge`);
   }
-  redirect(`/admin/users/${userId}?saved=badge`);
+  redirect(`/owner/users/${userId}?saved=badge`);
 }
