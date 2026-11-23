@@ -14,18 +14,21 @@ export function AuthShell({
   return (
     <div className="flex min-h-full flex-col bg-background">
       <header className="border-t-4 border-b border-t-navy border-b-line bg-white">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
           <Link href="/" aria-label="RentProof, на главную" className="rounded-lg">
             <Logo />
           </Link>
-          <nav aria-label="Вход и кабинет" className="flex items-center gap-4 text-sm font-medium text-graphite">
-            <Link href="/login" className="hover:text-navy">
+          <nav
+            aria-label="Вход и кабинет"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-graphite"
+          >
+            <Link href="/login" className="whitespace-nowrap hover:text-navy">
               Войти
             </Link>
-            <Link href="/register" className="hover:text-navy">
+            <Link href="/register" className="whitespace-nowrap hover:text-navy">
               Регистрация
             </Link>
-            <Link href="/account" className="hover:text-navy">
+            <Link href="/account" className="whitespace-nowrap hover:text-navy">
               Кабинет
             </Link>
           </nav>

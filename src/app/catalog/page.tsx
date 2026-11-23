@@ -47,7 +47,7 @@ async function CatalogBody({ searchParams }: { searchParams: Promise<Query> }) {
             <Link
               key={category.id}
               href={`/categories/${category.id}`}
-              className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-navy transition hover:border-navy/40"
+              className="inline-flex shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-navy transition hover:border-navy/40"
             >
               {category.name}
             </Link>
