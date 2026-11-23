@@ -19,6 +19,8 @@ Local `./data/rentproof.sqlite` in this environment is a **dev/test** file (ofte
 
 Canonical production SQLite path (when disk existed): `/data/rentproof.sqlite`.
 
+See **`docs/SQLITE_BACKUP_RECOVERY.md`**: agent search found **no Production backup**. Do not migrate test `/tmp` DBs. For intentional empty bootstrap after accepting data loss, follow that doc.
+
 ## Prepare Render Postgres
 
 1. Render Dashboard → **New → Postgres**.

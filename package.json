@@ -17,7 +17,8 @@
     "owner:recover": "node --experimental-strip-types ./scripts/recover-owner.mts",
     "db:backup": "node --experimental-strip-types ./scripts/backup-sqlite.mts",
     "db:migrate:sqlite-to-pg": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/migrate-sqlite-to-postgres.mts",
-    "db:verify-counts": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/verify-db-counts.mts"
+    "db:verify-counts": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/verify-db-counts.mts",
+    "db:audit-sqlite": "node --experimental-strip-types ./scripts/audit-sqlite-backup.mts"
   },
   "dependencies": {
     "next": "16.4.6",
