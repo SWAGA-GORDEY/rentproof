@@ -72,7 +72,7 @@ describe("owner ultimate access", () => {
     assert.equal(postLoginPath(user), "/account");
   });
 
-  it("dashboard/finance/security/email read real SQLite counters", () => {
+  it("dashboard/finance/security/email read real DB counters", () => {
     const dash = dccDashboard();
     assert.equal(typeof dash.users.total, "number");
     assert.ok(Array.isArray(dash.charts.revenueByDay));

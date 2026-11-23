@@ -1,5 +1,4 @@
-import { getDb } from "@/lib/db";
-import { databasePath } from "@/lib/db";
+import { databasePath, getDb, resolveDbDriver } from "@/lib/db";
 import { mailConfigured } from "@/lib/mail";
 import { billingStatus, plans } from "@/lib/plans";
 import { existsSync } from "node:fs";
@@ -130,7 +129,8 @@ export function dccDashboard() {
     charts: { registrationsByDay, listingsByDay, aiByDay, revenueByDay, activeUsersByDay },
     loginFailuresDay: count(`SELECT COUNT(*) AS c FROM login_attempts WHERE attempted_at >= ?`, dayAgo),
     health: {
-      database: existsSync(dbPath) ? "ok" : "missing",
+      // SQLite: file on disk. Postgres: connection already opened via getDb().
+      database: resolveDbDriver() === "postgres" ? "ok" : existsSync(dbPath) ? "ok" : "missing",
       email: (() => {
         if (!mailConfigured()) return "console";
         const driver = (process.env.MAIL_DRIVER ?? "auto").trim().toLowerCase();

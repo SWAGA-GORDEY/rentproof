@@ -25,6 +25,8 @@ let worker = null;
 function ensureWorker() {
   if (worker) return worker;
   const w = new Worker(resolveWorkerPath());
+  // Do not keep the Node process alive solely for the idle PG worker (test exits / serverless).
+  w.unref();
   w.on("error", () => {
     worker = null;
   });
