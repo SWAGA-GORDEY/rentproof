@@ -41,3 +41,7 @@ Copies the live file to a timestamped backup. Verify restore offline before dele
 - `OWNER_EMAIL=gordey.tomozov@mail.ru` (existing account email)
 
 On `RENDER=true`, if `RENTPROOF_DB_PATH` is missing/blank, the app defaults to `/data/rentproof.sqlite`. Protection against ephemeral paths stays enabled. Missing DB file on Render fails loudly instead of creating an empty production DB (unless `RENTPROOF_ALLOW_CREATE_EMPTY_DB=1` for intentional bootstrap).
+
+## Mount point `/data` (do not mkdir)
+
+The app **never** creates the Render mount path `/data` itself (`mkdir('/data')` → `EACCES`). Render must attach a Persistent Disk with **Mount Path** `/data`. The app only creates nested dirs such as `/data/uploads` after verifying `/data` exists and is accessible. Existing `/data/rentproof.sqlite` is opened in place — never replaced with an empty file.

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { getDb } from "@/lib/db";
+import { ensureDataSubdirectory, getDb } from "@/lib/db";
 import { ForbiddenError, ImageRejectedError, NotFoundError } from "@/lib/errors";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -215,7 +215,7 @@ function insertImage(table: string, parentId: string, bytes: Uint8Array, mime: s
   const id = randomUUID();
   const storageName = `${id}.img`;
   const root = uploadRoot();
-  mkdirSync(/*turbopackIgnore: true*/ root, { recursive: true });
+  ensureDataSubdirectory(/*turbopackIgnore: true*/ root);
   writeFileSync(/*turbopackIgnore: true*/ path.join(root, storageName), bytes);
   const createdAt = new Date().toISOString();
   const sort = table === "listing_images" ? nextSort(parentId) : 0;

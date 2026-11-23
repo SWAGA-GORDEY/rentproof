@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { dccNav } from "@/lib/admin-nav";
 import {
   assertDurableDatabasePath,
   assertExistingProductionDatabase,
+  assertPersistentDiskMount,
   databasePath,
+  ensureDataSubdirectory,
+  ensureSqliteParentDirectory,
+  RENDER_DISK_MOUNT,
   RENDER_SQLITE_PATH,
 } from "@/lib/db";
 import { dccHref, OWNER_HOME, safeStaffNext } from "@/lib/staff-access";
@@ -96,5 +102,48 @@ describe("owner routes + persistence guards", () => {
     seed(getDb());
     const after = getDb().prepare(`SELECT COUNT(*) AS c FROM users`).get() as { c: number };
     assert.equal(Number(after.c), Number(before.c));
+  });
+
+  it("never mkdir the /data mount; missing mount fails clearly", () => {
+    const dbSource = readFileSync(new URL("../src/lib/db.ts", import.meta.url), "utf8");
+    assert.equal(dbSource.includes("mkdirSync(path.dirname(file)"), false);
+    assert.match(dbSource, /ensureSqliteParentDirectory/);
+    assert.match(dbSource, /will not create/);
+
+    const prevRequire = process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+    process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = "1";
+
+    // CI/dev containers typically have no Render disk at /data.
+    if (!existsSync(RENDER_DISK_MOUNT)) {
+      assert.throws(
+        () => assertPersistentDiskMount(RENDER_DISK_MOUNT),
+        /mount .*missing|will not create/i,
+      );
+      assert.throws(
+        () => ensureSqliteParentDirectory(RENDER_SQLITE_PATH),
+        /mount .*missing|will not create/i,
+      );
+      assert.throws(
+        () => ensureDataSubdirectory("/data/uploads"),
+        /mount .*missing|Cannot create/i,
+      );
+    }
+
+    if (prevRequire === undefined) delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+    else process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = prevRequire;
+  });
+
+  it("creates only nested dirs under an existing data root (not the mount itself)", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "rentproof-data-"));
+    const nested = path.join(root, "uploads");
+    ensureDataSubdirectory(nested);
+    assert.equal(existsSync(nested), true);
+    assert.equal(existsSync(root), true);
+
+    const sqlite = path.join(root, "rentproof.sqlite");
+    ensureSqliteParentDirectory(sqlite);
+    // Parent is the temp root (already exists) — must not throw or wipe anything.
+    writeFileSync(sqlite, "");
+    assert.equal(existsSync(sqlite), true);
   });
 });

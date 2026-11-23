@@ -21,7 +21,10 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV RENTPROOF_DB_PATH=/data/rentproof.sqlite
 ENV RENTPROOF_UPLOAD_DIR=/data/uploads
-RUN mkdir -p /data/uploads
+# Do NOT mkdir /data here. Render must mount the persistent disk at /data.
+# Creating /data in the image masks a missing disk and previously led to
+# EACCES (mkdir '/data') or ephemeral writes. App creates only /data/uploads
+# after verifying the mount exists.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public

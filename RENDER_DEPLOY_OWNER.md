@@ -33,6 +33,13 @@ Or squash-merge the tip of `cursor/owner-ultimate-dcc-f2a8` after review.
 
 If `RENTPROOF_DB_PATH` exists in the Dashboard as an empty variable, either set it to `/data/rentproof.sqlite` or **delete** the empty key so the Docker/`RENDER=true` default applies.
 
+**Persistent Disk (required):**
+
+- Disk attached to this **same** web service (not a different service).
+- **Mount Path** = `/data` (exact).
+- Do not delete/reformat the disk. Existing SQLite must stay at `/data/rentproof.sqlite`.
+- The app will **not** `mkdir /data` (that caused `EACCES`). If logs say the mount is missing, fix the Dashboard disk mount — do not invent `/data` in the container.
+
 After changing env: **Manual Deploy / Restart**.
 
 ## Verify after deploy
