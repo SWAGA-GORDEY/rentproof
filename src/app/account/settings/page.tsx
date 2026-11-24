@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/current-user";
 import { formatDateRu } from "@/lib/format";
 import { mailChannelStatus } from "@/lib/notifications";
 import { billingStatus } from "@/lib/plans";
+import { ensureReferralCode, listReferralsForUser } from "@/lib/referrals";
+import { siteOrigin } from "@/lib/site";
 import { readPlan } from "@/lib/subscriptions";
 
 export const metadata = { title: "Настройки" };
@@ -25,9 +27,20 @@ async function Body() {
   const billing = billingStatus();
   const mail = mailChannelStatus();
   const history = listAuditForActor(user.id, 15);
+  const referralCode = ensureReferralCode(user.id);
+  const invited = listReferralsForUser(user.id, 20);
+  const inviteUrl = `${siteOrigin()}/register?ref=${referralCode}`;
   return (
     <div className="grid max-w-3xl gap-6">
       <h1 className="font-display text-3xl font-semibold text-navy">Настройки</h1>
+      <section className="rounded-3xl border border-line bg-white p-6">
+        <h2 className="font-display text-xl font-semibold text-navy">Реферальная ссылка</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Приглашения учитываются один раз на аккаунт. Автоматические денежные бонусы не начисляются.
+        </p>
+        <p className="mt-3 break-all rounded-2xl bg-mist px-3 py-2 font-mono text-sm text-ink">{inviteUrl}</p>
+        <p className="mt-3 text-sm text-muted">Код: {referralCode} · приглашено: {invited.length}</p>
+      </section>
       <section className="rounded-3xl border border-line bg-white p-6">
         <h2 className="font-display text-xl font-semibold text-navy">Тариф</h2>
         <p className="mt-2 text-sm text-muted">

@@ -1,5 +1,4 @@
-import { getDb } from "@/lib/db";
-import { databasePath } from "@/lib/db";
+import { databasePath, getDb, resolveDbDriver } from "@/lib/db";
 import { mailConfigured } from "@/lib/mail";
 import { billingStatus, plans } from "@/lib/plans";
 import { existsSync } from "node:fs";
@@ -124,13 +123,14 @@ export function dccDashboard() {
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       day: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, dayAgo),
       users: count(`SELECT COUNT(DISTINCT user_id) AS c FROM ai_reports`),
-      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status = 'unavailable' OR status = 'error'`),
+      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status = 'unavailable' OR status = 'failed'`),
     },
     planDistribution,
     charts: { registrationsByDay, listingsByDay, aiByDay, revenueByDay, activeUsersByDay },
     loginFailuresDay: count(`SELECT COUNT(*) AS c FROM login_attempts WHERE attempted_at >= ?`, dayAgo),
     health: {
-      database: existsSync(dbPath) ? "ok" : "missing",
+      // SQLite: file on disk. Postgres: connection already opened via getDb().
+      database: resolveDbDriver() === "postgres" ? "ok" : existsSync(dbPath) ? "ok" : "missing",
       email: (() => {
         if (!mailConfigured()) return "console";
         const driver = (process.env.MAIL_DRIVER ?? "auto").trim().toLowerCase();
@@ -220,11 +220,11 @@ export function dccAiCenter() {
   const recentErrors = getDb()
     .prepare(
       `SELECT id, user_id, status, created_at FROM ai_reports
-       WHERE status IN ('unavailable','error') ORDER BY created_at DESC LIMIT 20`,
+       WHERE status IN ('unavailable','failed') ORDER BY created_at DESC LIMIT 20`,
     )
     .all() as Array<{ id: string; user_id: string; status: string; created_at: string }>;
   const recentOk = count(
-    `SELECT COUNT(*) AS c FROM ai_reports WHERE status NOT IN ('unavailable','error') AND created_at >= ?`,
+    `SELECT COUNT(*) AS c FROM ai_reports WHERE status NOT IN ('unavailable','failed') AND created_at >= ?`,
     monthAgo,
   );
   return {
@@ -244,7 +244,7 @@ export function dccAiCenter() {
       month: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
       day: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE created_at >= ?`, dayAgo),
       activeUsers: count(`SELECT COUNT(DISTINCT user_id) AS c FROM ai_reports WHERE created_at >= ?`, monthAgo),
-      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status IN ('unavailable','error')`),
+      errors: count(`SELECT COUNT(*) AS c FROM ai_reports WHERE status IN ('unavailable','failed')`),
       succeededMonth: recentOk,
     },
     byPlan,
@@ -339,7 +339,6 @@ export function dccEmailCenter() {
   else if (driver === "console") active = "console";
   else if (driver === "auto") active = "auto-unresolved";
 
-  // No persistent mail_events table yet — report honestly from audit + verification tables.
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   const verificationIssued = count(
     `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'email.%' AND created_at >= ?`,
@@ -349,6 +348,28 @@ export function dccEmailCenter() {
     `SELECT COUNT(*) AS c FROM audit_log WHERE action LIKE 'password.%' AND created_at >= ?`,
     weekAgo,
   );
+  const deliveredWeek = count(
+    `SELECT COUNT(*) AS c FROM mail_delivery_log WHERE delivered = 1 AND created_at >= ?`,
+    weekAgo,
+  );
+  const failedWeek = count(
+    `SELECT COUNT(*) AS c FROM mail_delivery_log WHERE delivered = 0 AND created_at >= ?`,
+    weekAgo,
+  );
+  const recent = getDb()
+    .prepare(
+      `SELECT id, adapter, recipient_domain, subject, delivered, error_code, created_at
+       FROM mail_delivery_log ORDER BY created_at DESC LIMIT 20`,
+    )
+    .all() as Array<{
+    id: string;
+    adapter: string;
+    recipient_domain: string;
+    subject: string;
+    delivered: number;
+    error_code: string | null;
+    created_at: string;
+  }>;
   return {
     configured: mailConfigured(),
     driverEnv: driver,
@@ -356,7 +377,21 @@ export function dccEmailCenter() {
     resendKeyPresent: resendKey,
     smtpHostPresent: smtpHost,
     fromAddress: process.env.MAIL_FROM?.trim() || process.env.SMTP_FROM?.trim() || "(default)",
-    week: { verificationAndEmailAudit: verificationIssued, passwordRelatedAudit: passwordResets },
-    note: "История доставки Resend API в БД не зеркалится. Показаны audit-события и статус драйвера без секретов.",
+    week: {
+      verificationAndEmailAudit: verificationIssued,
+      passwordRelatedAudit: passwordResets,
+      delivered: deliveredWeek,
+      failedOrConsole: failedWeek,
+    },
+    recentDeliveries: recent.map((row) => ({
+      id: row.id,
+      adapter: row.adapter,
+      recipientDomain: row.recipient_domain,
+      subject: row.subject,
+      delivered: row.delivered === 1,
+      errorCode: row.error_code,
+      createdAt: row.created_at,
+    })),
+    note: "Тела писем и коды не хранятся. delivered=true только при подтверждённом ответе провайдера (например id от Resend).",
   };
 }

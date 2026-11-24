@@ -334,7 +334,8 @@ function hasConfirmedOverlap(db: DatabaseSync, listingId: string, startDate: str
 
 function transaction<T>(fn: () => T): T {
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
+  // SQLite: IMMEDIATE acquires a write lock early. Postgres has no IMMEDIATE keyword.
+  db.exec(db.driver === "postgres" ? "BEGIN" : "BEGIN IMMEDIATE");
   try {
     const value = fn();
     db.exec("COMMIT");

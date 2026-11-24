@@ -18,8 +18,8 @@
   --color-line: #d7e0eb;
   --color-accent: #1a4f8b;
   --color-paper: #f7f8fb;
-  --font-sans: var(--font-manrope), "Segoe UI", sans-serif;
-  --font-display: var(--font-unbounded), var(--font-manrope), sans-serif;
+  --font-sans: "Manrope", "Segoe UI", Arial, sans-serif;
+  --font-display: "Unbounded", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
 }
 
 html {

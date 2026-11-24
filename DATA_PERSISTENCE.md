@@ -35,7 +35,23 @@ Copies the live file to a timestamped backup. Verify restore offline before dele
 
 ## Required Render env (no secrets in Git)
 
-- `RENTPROOF_DB_PATH=/data/rentproof.sqlite`
+- `RENTPROOF_DB_PATH=/data/rentproof.sqlite` — **never leave blank** in the Dashboard (blank string is treated as “set” by some platforms and used to break defaults)
 - `RENTPROOF_UPLOAD_DIR=/data/uploads`
 - Persistent disk mounted at `/data`
 - `OWNER_EMAIL=gordey.tomozov@mail.ru` (existing account email)
+
+On `RENDER=true`, if `RENTPROOF_DB_PATH` is missing/blank, the app defaults to `/data/rentproof.sqlite`. Protection against ephemeral paths stays enabled. Missing DB file on Render fails loudly instead of creating an empty production DB (unless `RENTPROOF_ALLOW_CREATE_EMPTY_DB=1` for intentional bootstrap).
+
+## Mount point `/data` (do not mkdir)
+
+The app **never** creates the Render mount path `/data` itself (`mkdir('/data')` → `EACCES`). Render must attach a Persistent Disk with **Mount Path** `/data`. The app only creates nested dirs such as `/data/uploads` after verifying `/data` exists and is accessible. Existing `/data/rentproof.sqlite` is opened in place — never replaced with an empty file.
+
+## Managed PostgreSQL (diskless / free web)
+
+When Persistent Disk is unavailable, use Render Postgres:
+
+- `DATABASE_URL` — secret from the Postgres service (never in Git)
+- `RENTPROOF_DB_DRIVER=postgres` — only after a verified SQLite→Postgres copy
+- `RENTPROOF_REQUIRE_NONEMPTY_POSTGRES=1` — refuse empty `users` table
+
+See `docs/POSTGRES_MIGRATION.md`. Migration tooling: `npm run db:migrate:sqlite-to-pg`, `npm run db:verify-counts`. Source SQLite is never deleted.

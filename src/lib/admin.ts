@@ -115,5 +115,6 @@ export function adminOverview() {
  * Kept only to fail closed if an old call site remains.
  */
 export function promoteExistingUser(_email: string): void {
+  void _email;
   throw new ForbiddenError();
 }

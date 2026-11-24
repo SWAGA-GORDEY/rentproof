@@ -105,7 +105,8 @@ export class FakeYooKassaClient implements YooKassaClient {
 }
 
 function publicView(payment: Stored): YooPayment {
-  const { capture: _capture, ...rest } = payment;
+  const { capture, ...rest } = payment;
+  void capture;
   return { ...rest };
 }
 

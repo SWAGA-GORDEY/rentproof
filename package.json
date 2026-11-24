@@ -15,11 +15,16 @@
     "test:ai": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/test-ai-connection.mts",
     "admin:bootstrap": "node --experimental-strip-types ./scripts/bootstrap-admin.mts",
     "owner:recover": "node --experimental-strip-types ./scripts/recover-owner.mts",
-    "db:backup": "node --experimental-strip-types ./scripts/backup-sqlite.mts"
+    "db:backup": "node --experimental-strip-types ./scripts/backup-sqlite.mts",
+    "db:migrate:sqlite-to-pg": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/migrate-sqlite-to-postgres.mts",
+    "db:verify-counts": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/verify-db-counts.mts",
+    "db:audit-sqlite": "node --experimental-strip-types ./scripts/audit-sqlite-backup.mts",
+    "db:backup:pg": "node --experimental-strip-types --import ./tests/register-alias.mjs ./scripts/backup-postgres.mts"
   },
   "dependencies": {
     "next": "16.4.6",
     "nodemailer": "^10.6.1",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "resend": "^6.39.0"
@@ -28,6 +33,7 @@
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

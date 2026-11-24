@@ -15,6 +15,9 @@ OPENAI_MODEL=gpt-6-luna
 Допустимые алиасы:
 
 - `TOKENLAVKA_KEY` — если `OPENAI_API_KEY` пуст;
+- `TOKENLAVKA_API_KEY` — legacy alias for existing local environments;
+- `TOKENLAVKA_BASE_URL` — используется, если `OPENAI_BASE_URL` пуст;
+- `TOKENLAVKA_MODEL` — используется, если `OPENAI_MODEL` и `OPENAI_VISION_MODEL` пусты;
 - `OPENAI_VISION_MODEL` — если `OPENAI_MODEL` пуст.
 
 ### Auth и URL (по документации TokenLavka)

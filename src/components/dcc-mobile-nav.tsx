@@ -12,11 +12,13 @@ export function DccMobileNav({ links, dark = false }: { links: DccNavLink[]; dar
   const [query, setQuery] = useState("");
   const panelId = useId();
   const pathname = usePathname();
-
-  useEffect(() => {
+  const [navPath, setNavPath] = useState(pathname);
+  // Close the drawer when the route changes (adjust state during render — no effect cascade).
+  if (navPath !== pathname) {
+    setNavPath(pathname);
     setOpen(false);
     setQuery("");
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!open) return;

@@ -15,6 +15,9 @@ export async function analyzeAction(_state: FormState, formData: FormData): Prom
   if (!user) {
     redirect("/login");
   }
+  if (!user.emailVerified) {
+    redirect("/verify-email");
+  }
   try {
     assertFeatureAllowed(user.id, "ai");
   } catch (error) {

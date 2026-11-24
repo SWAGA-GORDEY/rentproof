@@ -19,7 +19,9 @@ export default function RegisterPage() {
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
-      <RegisterForm />
+      <Suspense fallback={null}>
+        <RegisterForm />
+      </Suspense>
     </AuthShell>
   );
 }

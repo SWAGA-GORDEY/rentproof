@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { getDb } from "@/lib/db";
+import { ensureDataSubdirectory, getDb } from "@/lib/db";
 import { ForbiddenError, ImageRejectedError, NotFoundError } from "@/lib/errors";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -16,7 +16,15 @@ export type StoredImage = {
 };
 
 export function uploadRoot(): string {
-  return process.env.RENTPROOF_UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads");
+  const configured = process.env.RENTPROOF_UPLOAD_DIR?.trim();
+  if (configured) return configured;
+  if (process.env.RENDER === "true") {
+    // Prefer persistent disk when present; diskless free plans need an explicit env
+    // (or ephemeral /tmp — images only, never account data).
+    if (existsSync("/data")) return "/data/uploads";
+    return "/tmp/rentproof-uploads";
+  }
+  return path.join(process.cwd(), "data", "uploads");
 }
 
 export function sniffImage(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
@@ -212,7 +220,7 @@ function insertImage(table: string, parentId: string, bytes: Uint8Array, mime: s
   const id = randomUUID();
   const storageName = `${id}.img`;
   const root = uploadRoot();
-  mkdirSync(/*turbopackIgnore: true*/ root, { recursive: true });
+  ensureDataSubdirectory(/*turbopackIgnore: true*/ root);
   writeFileSync(/*turbopackIgnore: true*/ path.join(root, storageName), bytes);
   const createdAt = new Date().toISOString();
   const sort = table === "listing_images" ? nextSort(parentId) : 0;

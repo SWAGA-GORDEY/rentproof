@@ -28,6 +28,7 @@ import {
   parseProfile,
   parseRegistration,
 } from "@/lib/validation";
+import { attributeReferral } from "@/lib/referrals";
 import { postLoginPath, safeStaffNext } from "@/lib/staff-access";
 
 export type FormState = {
@@ -69,6 +70,10 @@ export async function registerAction(_state: FormState, formData: FormData): Pro
     if (marketing && marketingDoc) recordConsent(user.id, "marketing", marketingDoc);
 
     writeAudit(user.id, "auth.register", "user", user.id, { role: user.role });
+    const refCode = String(formData.get("ref") ?? "").trim();
+    if (refCode) {
+      attributeReferral(user.id, refCode);
+    }
     await issueEmailVerification(user.id, user.email, user.name);
     await startSession(user.id);
   } catch (error) {

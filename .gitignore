@@ -47,3 +47,6 @@ next-env.d.ts
 /data/*.sqlite-wal
 /data/*.sqlite-shm
 /data/uploads/
+
+# local sqlite / uploads / backups (never commit)
+/data/

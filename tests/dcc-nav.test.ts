@@ -5,13 +5,15 @@ import { dccNav } from "@/lib/admin-nav";
 
 describe("dcc navigation", () => {
   it("exposes Control Center routes including Security and Email", () => {
-    assert.equal(dccNav.length, 18);
+    assert.equal(dccNav.length, 20);
     const hrefs = dccNav.map((item) => item.href);
     assert.ok(hrefs.includes("/owner"));
     assert.ok(hrefs.includes("/owner/users"));
     assert.ok(hrefs.includes("/owner/security"));
     assert.ok(hrefs.includes("/owner/email"));
     assert.ok(hrefs.includes("/owner/payments"));
+    assert.ok(hrefs.includes("/owner/bookings"));
+    assert.ok(hrefs.includes("/owner/referrals"));
     assert.equal(new Set(hrefs).size, hrefs.length);
   });
 

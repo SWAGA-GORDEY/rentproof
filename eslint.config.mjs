@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // CJS Postgres worker bridge (Node require + worker_threads).
+    "src/lib/pg-database-runtime.cjs",
+    "src/lib/pg-sync-worker.mjs",
   ]),
 ]);
 

@@ -18,15 +18,15 @@ export function Hero() {
       <div className="blueprint absolute inset-0" />
       <div className="relative mx-auto grid max-w-6xl items-start gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.12fr)_minmax(20rem,0.88fr)] lg:gap-16 lg:py-20">
         <div>
-          <p className="text-xs font-semibold tracking-[0.16em] text-accent uppercase">
-            Платформа аренды имущества
+          <p className="font-display text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+            RentProof
           </p>
           <h1 className="mt-4 max-w-xl font-display text-[2.35rem] leading-[1.08] font-semibold tracking-tight text-balance text-navy sm:text-5xl lg:text-[3.35rem]">
             Аренда без риска. Доверие в каждой сделке
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-graphite sm:text-lg">
-            Сравнивайте технику, оборудование и площади до сделки: в карточке
-            видны состояние, залог и минимальный срок.
+            RentProof помогает сравнивать технику, оборудование и площади до сделки:
+            в карточке видны состояние, залог и минимальный срок.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <PlaceListingLink className="inline-flex items-center justify-center rounded-xl bg-navy px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#16365d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy" />

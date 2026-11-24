@@ -1,19 +1,26 @@
-# RentProof on Render — Docker + persistent disk for SQLite/uploads.
+# RentProof on Render — Docker web service + managed Postgres (preferred on diskless free plans).
 # Set secrets in the Render dashboard (never commit real keys):
-#   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL,
-#   NEXT_PUBLIC_SITE_URL, RENTPROOF_ADMIN_EMAIL, RENTPROOF_ADMIN_PASSWORD,
-#   YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY (test shop only)
+#   DATABASE_URL (from the Postgres service), OPENAI_API_KEY, RESEND_API_KEY,
+#   YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, OWNER_EMAIL
+#
+# Cut over to Postgres only after scripts/migrate-sqlite-to-postgres.mts verifies counts.
+# Keep SQLite backups; do not delete source DBs.
+
+databases:
+  - name: rentproof-db
+    plan: 0.1c-256mb
 
 services:
   - type: web
     name: rentproof
     runtime: docker
     plan: starter
-    healthCheckPath: /api/ai/connection
-    disk:
-      name: rentproof-data
-      mountPath: /data
-      sizeGB: 1
+    healthCheckPath: /api/health
+    # Optional: paid Persistent Disk for uploads / SQLite rollback. Free web has no disk.
+    # disk:
+    #   name: rentproof-data
+    #   mountPath: /data
+    #   sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -21,10 +28,19 @@ services:
         value: "3000"
       - key: HOSTNAME
         value: "0.0.0.0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rentproof-db
+          property: connectionString
+      - key: RENTPROOF_DB_DRIVER
+        value: postgres
+      # Keep 0 for first empty bootstrap (no SQLite backup). Set to 1 after owner registers.
+      - key: RENTPROOF_REQUIRE_NONEMPTY_POSTGRES
+        value: "0"
       - key: RENTPROOF_DB_PATH
         value: /data/rentproof.sqlite
       - key: RENTPROOF_UPLOAD_DIR
-        value: /data/uploads
+        value: /tmp/rentproof-uploads
       - key: RENTPROOF_COOKIE_SECURE
         value: "1"
       - key: OPENAI_BASE_URL

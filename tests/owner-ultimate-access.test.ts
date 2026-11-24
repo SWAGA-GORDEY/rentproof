@@ -40,6 +40,8 @@ describe("owner ultimate access", () => {
     const email = uniqueEmail("ult-own");
     const owner = await registerUser({ name: "Ult Owner", email, password, role: "landlord" });
     getDb().prepare(`UPDATE users SET email_verified = 1 WHERE id = ?`).run(owner.id);
+    // Shared test DBs may already have an owner from other suites.
+    getDb().prepare(`UPDATE users SET staff_role = NULL WHERE staff_role = 'owner'`).run();
 
     process.env.OWNER_EMAIL = email;
     ensureOwnerFromEnv();
@@ -72,7 +74,7 @@ describe("owner ultimate access", () => {
     assert.equal(postLoginPath(user), "/account");
   });
 
-  it("dashboard/finance/security/email read real SQLite counters", () => {
+  it("dashboard/finance/security/email read real DB counters", () => {
     const dash = dccDashboard();
     assert.equal(typeof dash.users.total, "number");
     assert.ok(Array.isArray(dash.charts.revenueByDay));

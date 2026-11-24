@@ -26,12 +26,30 @@ Or squash-merge the tip of `cursor/owner-ultimate-dcc-f2a8` after review.
 | Key | Value |
 |-----|--------|
 | `OWNER_EMAIL` | `gordey.tomozov@mail.ru` (must already be a registered user) |
-| `RENTPROOF_DB_PATH` | `/data/rentproof.sqlite` |
+| `RENTPROOF_DB_PATH` | `/data/rentproof.sqlite` (**must not be blank** — blank overrides Docker default and caused HTTP 500) |
 | `RENTPROOF_UPLOAD_DIR` | `/data/uploads` |
 | `MAIL_DRIVER` / `RESEND_API_KEY` / `MAIL_FROM` | keep existing Resend setup |
 | Persistent disk | mount `/data` (see `render.yaml`) |
 
-After changing `OWNER_EMAIL`: **Manual Deploy / Restart**.
+If `RENTPROOF_DB_PATH` exists in the Dashboard as an empty variable, either set it to `/data/rentproof.sqlite` or **delete** the empty key so the Docker/`RENDER=true` default applies.
+
+**Preferred Production (diskless / free web):** managed Postgres — see `docs/PRODUCTION_LAUNCH.md`.
+
+| Key | Value |
+|-----|--------|
+| `RENTPROOF_DB_DRIVER` | `postgres` |
+| `DATABASE_URL` | Render Postgres Internal URL (secret) |
+| `RENTPROOF_REQUIRE_NONEMPTY_POSTGRES` | `0` until first owner registers, then optional `1` |
+| Health Check Path | `/api/health` |
+
+**Persistent Disk (only if using SQLite):**
+
+- Disk attached to this **same** web service (not a different service).
+- **Mount Path** = `/data` (exact).
+- Do not delete/reformat the disk. Existing SQLite must stay at `/data/rentproof.sqlite`.
+- The app will **not** `mkdir /data` (that caused `EACCES`). If logs say the mount is missing, fix the Dashboard disk mount — do not invent `/data` in the container.
+
+After changing env: **Manual Deploy / Restart** (only with owner confirmation).
 
 ## Verify after deploy
 

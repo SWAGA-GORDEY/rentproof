@@ -123,9 +123,12 @@ describe("modernize: email verification and password reset", () => {
     const user = await registerUser({ name: "Сброс Пароля", email, password, role: "tenant" });
     await requestPasswordReset(email);
     const knownCode = "654321";
+    const knownHash = createHash("sha256").update(knownCode).digest("hex");
+    // Clear any historical collision on UNIQUE(token_hash) from other suites.
+    getDb().prepare(`DELETE FROM password_resets WHERE token_hash = ?`).run(knownHash);
     getDb()
       .prepare(`UPDATE password_resets SET token_hash = ?, used_at = NULL WHERE user_id = ?`)
-      .run(createHash("sha256").update(knownCode).digest("hex"), user.id);
+      .run(knownHash, user.id);
     const next = "New-password-42";
     assert.deepEqual(await completePasswordReset(knownCode, next, email), { ok: true });
     const stored = passwordHashForEmail(email);

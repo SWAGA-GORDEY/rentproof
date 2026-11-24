@@ -12,6 +12,7 @@ import {
   createSubscriptionPayment,
   fakeFailPayment,
   fakeSucceedPayment,
+  getPayment,
   paymentsConfigured,
   syncPayment,
 } from "@/lib/payments";
@@ -138,10 +139,11 @@ export async function fakeConfirmAction(formData: FormData): Promise<void> {
   const paymentId = String(formData.get("paymentId") ?? "");
   const outcome = String(formData.get("outcome") ?? "success");
   try {
-    const payment = outcome === "fail" ? await fakeFailPayment(paymentId) : await fakeSucceedPayment(paymentId);
-    if (payment.userId !== user.id && !user.isAdmin) {
+    const existing = getPayment(paymentId);
+    if (!existing || (existing.userId !== user.id && !user.isAdmin)) {
       redirect("/account/payments?error=forbidden");
     }
+    const payment = outcome === "fail" ? await fakeFailPayment(paymentId) : await fakeSucceedPayment(paymentId);
     redirect(payment.status === "succeeded" ? `/payments/success?paymentId=${paymentId}` : `/payments/fail?paymentId=${paymentId}`);
   } catch {
     redirect(`/payments/fail?paymentId=${paymentId}`);

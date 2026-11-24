@@ -1,4 +1,4 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { writeAudit } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import { RateLimitError } from "@/lib/errors";
@@ -70,11 +70,19 @@ export function verifyEmailCode(userId: string, code: string): { ok: true } | { 
   getDb()
     .prepare(`UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ?`)
     .run(row.id);
-  if (row.code_hash !== hashVerificationCode(code)) {
+  const expected = Buffer.from(row.code_hash, "utf8");
+  const actual = Buffer.from(hashVerificationCode(code), "utf8");
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
     return { ok: false, reason: "invalid" };
   }
   const now = new Date().toISOString();
   getDb().prepare(`UPDATE email_verifications SET verified_at = ? WHERE id = ?`).run(now, row.id);
+  // Invalidate sibling codes so a successful verify is strictly one-shot for the account.
+  getDb()
+    .prepare(
+      `UPDATE email_verifications SET verified_at = COALESCE(verified_at, ?) WHERE user_id = ? AND id != ? AND verified_at IS NULL`,
+    )
+    .run(now, userId, row.id);
   getDb()
     .prepare(`UPDATE users SET email_verified = 1, email_verified_at = ?, updated_at = ? WHERE id = ?`)
     .run(now, now, userId);

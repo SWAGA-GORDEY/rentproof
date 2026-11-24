@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { requireStaff } from "@/lib/current-user";
 import { dccEmailCenter } from "@/lib/dcc";
+import { formatDateRu } from "@/lib/format";
 
 export default function AdminEmailPage() {
   return (
@@ -26,15 +27,35 @@ async function Body() {
         <Tile label="SMTP host" value={data.smtpHostPresent ? "present" : "missing"} />
         <Tile label="mailConfigured()" value={data.configured ? "yes" : "no"} />
         <Tile label="From" value={data.fromAddress} />
+        <Tile label="Доставлено / 7д" value={String(data.week.delivered)} />
+        <Tile label="Не доставлено / 7д" value={String(data.week.failedOrConsole)} />
         <Tile label="Email audit / 7д" value={String(data.week.verificationAndEmailAudit)} />
         <Tile label="Password audit / 7д" value={String(data.week.passwordRelatedAudit)} />
       </div>
+      <section className="rounded-3xl border border-line bg-white p-5">
+        <h2 className="font-display text-xl font-semibold text-navy">Последние попытки отправки</h2>
+        <p className="mt-1 text-xs text-muted">Только домен получателя и тема — без адресов и кодов.</p>
+        <ul className="mt-4 space-y-2 text-sm">
+          {data.recentDeliveries.length === 0 ? (
+            <li className="text-muted">Записей пока нет.</li>
+          ) : (
+            data.recentDeliveries.map((row) => (
+              <li key={row.id} className="flex flex-wrap justify-between gap-2 border-b border-line py-2">
+                <span>
+                  {row.delivered ? "ok" : "fail"} · {row.adapter} · @{row.recipientDomain} · {row.subject}
+                  {row.errorCode ? ` · ${row.errorCode}` : ""}
+                </span>
+                <span className="text-muted">{formatDateRu(row.createdAt)}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
       <section className="rounded-3xl border border-line bg-white p-5 text-sm text-muted">
         <p>
           API-ключи не отображаются. Тестовая отправка на произвольный адрес из UI не добавлена намеренно —
           используйте существующие потоки verify-email / forgot-password на разрешённом аккаунте.
         </p>
-        <p className="mt-2">Resend не ломаем: драйвер и шаблоны без изменений в этом разделе.</p>
       </section>
     </div>
   );

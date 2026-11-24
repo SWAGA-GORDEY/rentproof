@@ -27,20 +27,40 @@ export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true
     | undefined;
 
   if (user) {
-    const code = String(randomInt(100000, 999999));
     const now = new Date();
+    // Invalidate previously unused codes so only the newest remains valid.
     getDb()
-      .prepare(
-        `INSERT INTO password_resets (id, user_id, token_hash, expires_at, used_at, created_at)
-         VALUES (?, ?, ?, ?, NULL, ?)`,
-      )
-      .run(
-        randomUUID(),
-        user.id,
-        hashResetSecret(code),
-        new Date(now.getTime() + CODE_TTL_MS).toISOString(),
-        now.toISOString(),
-      );
+      .prepare(`UPDATE password_resets SET used_at = COALESCE(used_at, ?) WHERE user_id = ? AND used_at IS NULL`)
+      .run(now.toISOString(), user.id);
+    let code = "";
+    let inserted = false;
+    // 6-digit codes can collide historically under UNIQUE(token_hash) — retry.
+    for (let attempt = 0; attempt < 12 && !inserted; attempt++) {
+      code = String(randomInt(100000, 999999));
+      try {
+        getDb()
+          .prepare(
+            `INSERT INTO password_resets (id, user_id, token_hash, expires_at, used_at, created_at)
+             VALUES (?, ?, ?, ?, NULL, ?)`,
+          )
+          .run(
+            randomUUID(),
+            user.id,
+            hashResetSecret(code),
+            new Date(now.getTime() + CODE_TTL_MS).toISOString(),
+            now.toISOString(),
+          );
+        inserted = true;
+      } catch {
+        inserted = false;
+      }
+    }
+    if (!inserted || !code) {
+      return {
+        ok: true,
+        note: "Не удалось выпустить код сброса. Повторите попытку чуть позже.",
+      };
+    }
 
     const resetUrl = absoluteUrl(`/reset-password?email=${encodeURIComponent(user.email)}`);
     const mail = buildCodeEmail({
@@ -78,7 +98,8 @@ export async function completePasswordReset(
   emailRaw?: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const secret = tokenOrCode.trim();
-  consumeRateLimit(`password-reset-complete:${secret.slice(0, 16)}`, 10, 15 * 60 * 1000);
+  const emailKey = emailRaw?.trim().toLowerCase() || "unknown";
+  consumeRateLimit(`password-reset-complete:${emailKey}`, 10, 15 * 60 * 1000);
 
   let row: { id: string; user_id: string; expires_at: string; used_at: string | null } | undefined;
 
@@ -121,6 +142,10 @@ export async function completePasswordReset(
   const now = new Date().toISOString();
   getDb().prepare(`UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`).run(nextHash, now, row.user_id);
   getDb().prepare(`UPDATE password_resets SET used_at = ? WHERE id = ?`).run(now, row.id);
+  // Burn any other still-open codes for this user.
+  getDb()
+    .prepare(`UPDATE password_resets SET used_at = COALESCE(used_at, ?) WHERE user_id = ? AND used_at IS NULL`)
+    .run(now, row.user_id);
   getDb().prepare(`DELETE FROM sessions WHERE user_id = ?`).run(row.user_id);
   writeAudit(row.user_id, "password.reset.completed", "user", row.user_id, null);
   return { ok: true };

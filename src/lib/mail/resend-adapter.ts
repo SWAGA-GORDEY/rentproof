@@ -32,6 +32,11 @@ export class ResendMailAdapter implements MailAdapter {
       console.error("mail_resend_failed", { name: error.name, message: error.message });
       throw new Error("resend_send_failed");
     }
-    return { delivered: true, providerId: data?.id };
+    // Only treat as delivered when Resend returns a message id — never invent success.
+    if (!data?.id) {
+      console.error("mail_resend_missing_id");
+      return { delivered: false };
+    }
+    return { delivered: true, providerId: data.id };
   }
 }
