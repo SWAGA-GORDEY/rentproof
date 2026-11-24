@@ -12,7 +12,7 @@ export type AiProviderConfig = {
   model: string;
   /** Present only while handling a request on the server. Never log or return this. */
   apiKey: string | null;
-  keySource: "OPENAI_API_KEY" | "TOKENLAVKA_KEY" | null;
+  keySource: "OPENAI_API_KEY" | "TOKENLAVKA_KEY" | "TOKENLAVKA_API_KEY" | null;
 };
 
 export type AiConnectionProbe = {
@@ -46,18 +46,31 @@ export function sanitizeAiDiagnostic(text: string): string {
 export function readAiProviderConfig(): AiProviderConfig {
   const openaiKey = process.env.OPENAI_API_KEY?.trim() || "";
   const tokenlavkaKey = process.env.TOKENLAVKA_KEY?.trim() || "";
+  const legacyTokenlavkaKey = process.env.TOKENLAVKA_API_KEY?.trim() || "";
   const apiKey = openaiKey || tokenlavkaKey || null;
-  const keySource = openaiKey ? "OPENAI_API_KEY" : tokenlavkaKey ? "TOKENLAVKA_KEY" : null;
-  const baseUrl = (process.env.OPENAI_BASE_URL?.trim() || DEFAULT_OPENAI_BASE_URL).replace(/\/$/, "");
+  const resolvedKey = apiKey || legacyTokenlavkaKey || null;
+  const keySource = openaiKey
+    ? "OPENAI_API_KEY"
+    : tokenlavkaKey
+      ? "TOKENLAVKA_KEY"
+      : legacyTokenlavkaKey
+        ? "TOKENLAVKA_API_KEY"
+        : null;
+  const baseUrl = (
+    process.env.OPENAI_BASE_URL?.trim() ||
+    process.env.TOKENLAVKA_BASE_URL?.trim() ||
+    DEFAULT_OPENAI_BASE_URL
+  ).replace(/\/$/, "");
   const model =
     process.env.OPENAI_MODEL?.trim() ||
     process.env.OPENAI_VISION_MODEL?.trim() ||
+    process.env.TOKENLAVKA_MODEL?.trim() ||
     DEFAULT_OPENAI_MODEL;
   return {
-    configured: Boolean(apiKey),
+    configured: Boolean(resolvedKey),
     baseUrl,
     model,
-    apiKey,
+    apiKey: resolvedKey,
     keySource,
   };
 }

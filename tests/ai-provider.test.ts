@@ -10,7 +10,16 @@ import {
   DEFAULT_OPENAI_MODEL,
 } from "@/lib/ai-provider";
 
-const KEYS = ["OPENAI_API_KEY", "TOKENLAVKA_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_VISION_MODEL"] as const;
+const KEYS = [
+  "OPENAI_API_KEY",
+  "TOKENLAVKA_KEY",
+  "TOKENLAVKA_API_KEY",
+  "OPENAI_BASE_URL",
+  "TOKENLAVKA_BASE_URL",
+  "OPENAI_MODEL",
+  "OPENAI_VISION_MODEL",
+  "TOKENLAVKA_MODEL",
+] as const;
 const saved: Record<string, string | undefined> = {};
 
 function snapshotEnv() {
@@ -60,6 +69,15 @@ describe("ai-provider", () => {
     const fromToken = readAiProviderConfig();
     assert.equal(fromToken.keySource, "TOKENLAVKA_KEY");
     assert.equal(fromToken.configured, true);
+
+    clearAiEnv();
+    process.env.TOKENLAVKA_API_KEY = "sk-test-tokenlavka-legacy-cccccccccccccccccccc";
+    process.env.TOKENLAVKA_BASE_URL = "https://tokenlavka.com/custom/v1/";
+    process.env.TOKENLAVKA_MODEL = "tokenlavka-model-id";
+    const fromLegacyToken = readAiProviderConfig();
+    assert.equal(fromLegacyToken.keySource, "TOKENLAVKA_API_KEY");
+    assert.equal(fromLegacyToken.baseUrl, "https://tokenlavka.com/custom/v1");
+    assert.equal(fromLegacyToken.model, "tokenlavka-model-id");
   });
 
   it("prefers OPENAI_MODEL over OPENAI_VISION_MODEL and custom base URL", () => {
