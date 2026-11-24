@@ -43,10 +43,8 @@ describe("postgres migration prep", () => {
     else process.env.DATABASE_URL = prevUrl;
   });
 
-  it("copies fixture users into local Postgres with matching counts", async () => {
-    const databaseUrl =
-      process.env.RENTPROOF_TEST_DATABASE_URL?.trim() ||
-      "postgres://rentproof:rentproof_test@127.0.0.1:5432/rentproof_migrate";
+  it("copies fixture users into local Postgres with matching counts", { skip: !process.env.RENTPROOF_TEST_DATABASE_URL?.trim() }, async () => {
+    const databaseUrl = process.env.RENTPROOF_TEST_DATABASE_URL!.trim();
 
     const dir = mkdtempSync(path.join(tmpdir(), "rp-mig-"));
     const sqlitePath = path.join(dir, "source.sqlite");

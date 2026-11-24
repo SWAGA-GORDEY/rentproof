@@ -9,7 +9,10 @@ const initial: FormState = {};
 export function VerifyEmailForm({ email, note }: { email: string; note: string }) {
   const [verifyState, verifyAction, verifying] = useActionState(verifyEmailAction, initial);
   const [resendState, resendAction, resending] = useActionState(
-    async (_state: FormState) => resendVerificationAction(),
+    async (state: FormState) => {
+      void state;
+      return resendVerificationAction();
+    },
     initial,
   );
 

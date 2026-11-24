@@ -46,23 +46,29 @@ describe("owner routes + persistence guards", () => {
   });
 
   it("durable path assertion fires only when enforced", () => {
+    const prevRender = process.env.RENDER;
     const prevRequire = process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
     const prevAllow = process.env.RENTPROOF_ALLOW_EPHEMERAL_DB;
-    delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
-    delete process.env.RENTPROOF_ALLOW_EPHEMERAL_DB;
-    assert.doesNotThrow(() => assertDurableDatabasePath("./data/rentproof.sqlite"));
+    try {
+      delete process.env.RENDER;
+      delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+      delete process.env.RENTPROOF_ALLOW_EPHEMERAL_DB;
+      assert.doesNotThrow(() => assertDurableDatabasePath("./data/rentproof.sqlite"));
 
-    process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = "1";
-    assert.throws(() => assertDurableDatabasePath("./data/rentproof.sqlite"));
-    assert.doesNotThrow(() => assertDurableDatabasePath(RENDER_SQLITE_PATH));
+      process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = "1";
+      assert.throws(() => assertDurableDatabasePath("./data/rentproof.sqlite"));
+      assert.doesNotThrow(() => assertDurableDatabasePath(RENDER_SQLITE_PATH));
 
-    process.env.RENTPROOF_ALLOW_EPHEMERAL_DB = "1";
-    assert.doesNotThrow(() => assertDurableDatabasePath("./data/temp.sqlite"));
-
-    if (prevRequire === undefined) delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
-    else process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = prevRequire;
-    if (prevAllow === undefined) delete process.env.RENTPROOF_ALLOW_EPHEMERAL_DB;
-    else process.env.RENTPROOF_ALLOW_EPHEMERAL_DB = prevAllow;
+      process.env.RENTPROOF_ALLOW_EPHEMERAL_DB = "1";
+      assert.doesNotThrow(() => assertDurableDatabasePath("./data/temp.sqlite"));
+    } finally {
+      if (prevRender === undefined) delete process.env.RENDER;
+      else process.env.RENDER = prevRender;
+      if (prevRequire === undefined) delete process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK;
+      else process.env.RENTPROOF_REQUIRE_PERSISTENT_DISK = prevRequire;
+      if (prevAllow === undefined) delete process.env.RENTPROOF_ALLOW_EPHEMERAL_DB;
+      else process.env.RENTPROOF_ALLOW_EPHEMERAL_DB = prevAllow;
+    }
 
     assert.match(databasePath(), /\.sqlite$/);
   });

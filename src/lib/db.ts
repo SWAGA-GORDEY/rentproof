@@ -72,12 +72,16 @@ export function databasePath(): string {
 }
 
 export function isPersistentDiskPath(file: string): boolean {
-  const normalized = path.resolve(file);
+  // Render paths use POSIX semantics even when tested on Windows, where
+  // path.resolve('/data/...') would incorrectly yield C:\\data\\....
+  const normalized = path.posix.normalize(file.replaceAll("\\", "/"));
   return normalized === RENDER_SQLITE_PATH || normalized.startsWith(`${RENDER_DISK_MOUNT}/`);
 }
 
 export function isRenderDiskMount(dir: string): boolean {
-  return path.resolve(dir) === path.resolve(RENDER_DISK_MOUNT);
+  const normalized = path.posix.normalize(dir.replaceAll("\\", "/"));
+  // Tests and local tooling may pass path.resolve('/data') on Windows.
+  return normalized === RENDER_DISK_MOUNT || /^[a-z]:\/data$/i.test(normalized);
 }
 
 /**
@@ -88,7 +92,7 @@ export function assertDurableDatabasePath(file = databasePath()): void {
   if (resolveDbDriver() === "postgres") return;
   if (!persistenceEnforced()) return;
   const normalized = path.resolve(file);
-  if (isPersistentDiskPath(normalized)) return;
+  if (isPersistentDiskPath(file)) return;
   const message =
     `RENTPROOF_DB_PATH must point at the Render persistent disk (expected ${RENDER_SQLITE_PATH}). ` +
     `Resolved path "${normalized}" would lose accounts on redeploy. ` +

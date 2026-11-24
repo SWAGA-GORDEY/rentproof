@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it, before } from "node:test";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { closeDb, getDb } from "@/lib/db";
 import { ForbiddenError } from "@/lib/errors";
 import { createListing, getOwnedListing, updateListing } from "@/lib/listings";
@@ -25,7 +27,7 @@ describe("security IDOR guards", () => {
     delete process.env.DATABASE_URL;
     delete process.env.RENDER;
     process.env.RENTPROOF_ALLOW_CREATE_EMPTY_DB = "1";
-    process.env.RENTPROOF_DB_PATH = `/tmp/rentproof-idor-${Date.now()}.sqlite`;
+    process.env.RENTPROOF_DB_PATH = path.join(tmpdir(), `rentproof-idor-${Date.now()}.sqlite`);
     closeDb();
     getDb();
 
