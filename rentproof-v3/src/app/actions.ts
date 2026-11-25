@@ -146,6 +146,42 @@ export async function requestBookingAction(form: FormData): Promise<void> {
   redirect("/account/bookings?requested=1");
 }
 
+export async function updateOwnBookingAction(form: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = text(form, "id", 80);
+  const decision = text(form, "decision", 16);
+  const booking = await row<{ id: string; listing_id: string; owner_id: string; renter_id: string; start_date: string; end_date: string; status: string }>(
+    `SELECT b.id,b.listing_id,l.owner_id,b.renter_id,b.start_date,b.end_date,b.status
+     FROM bookings b JOIN listings l ON l.id=b.listing_id WHERE b.id=$1`, [id],
+  );
+  if (!booking || booking.status !== "pending") redirect("/account/bookings?error=Заявка%20уже%20обновлена");
+
+  let nextStatus: "confirmed" | "rejected" | "cancelled";
+  if (booking.owner_id === user.id && (decision === "confirmed" || decision === "rejected")) {
+    nextStatus = decision;
+    if (nextStatus === "confirmed") {
+      const overlap = await row(
+        `SELECT id FROM bookings WHERE listing_id=$1 AND id<>$2 AND status IN ('pending','confirmed')
+         AND start_date<$4 AND end_date>$3 LIMIT 1`,
+        [booking.listing_id, booking.id, booking.start_date, booking.end_date],
+      );
+      if (overlap) redirect("/account/bookings?error=Сначала%20обработайте%20другую%20заявку%20на%20эти%20даты");
+    }
+  } else if (booking.renter_id === user.id && decision === "cancelled") {
+    nextStatus = "cancelled";
+  } else {
+    redirect("/account/bookings?error=Нет%20прав%20для%20этого%20действия");
+  }
+
+  const changed = await execute("UPDATE bookings SET status=$1 WHERE id=$2 AND status='pending'", [nextStatus, booking.id]);
+  if (!changed) redirect("/account/bookings?error=Заявка%20уже%20обновлена");
+  await execute("INSERT INTO audit_log (id,actor_id,action,subject_id,created_at) VALUES ($1,$2,$3,$4,$5)", [randomUUID(), user.id, `booking.${nextStatus}`, booking.id, new Date().toISOString()]);
+  revalidatePath("/account");
+  revalidatePath("/account/bookings");
+  revalidatePath("/owner/bookings");
+  redirect(`/account/bookings?saved=${nextStatus}`);
+}
+
 export async function moderateListingAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = text(form, "id", 80);
