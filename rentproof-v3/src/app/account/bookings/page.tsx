@@ -1,0 +1,14 @@
+import { requireUser } from "@/lib/auth";
+import { myBookings } from "@/lib/marketplace";
+import { dateLabel, rubles, statusLabel } from "@/lib/format";
+import { updateOwnBookingAction } from "@/app/actions";
+
+export const dynamic = "force-dynamic";
+
+export default async function MyBookingsPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
+  const user = await requireUser();
+  const [bookings, params] = await Promise.all([myBookings(user), searchParams]);
+  const error = typeof params.error === "string" ? params.error.slice(0, 180) : "";
+  const success = typeof params.saved === "string" ? params.saved : "";
+  return <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8"><p className="eyebrow">Кабинет</p><h1 className="section-title">Заявки и аренды</h1><p className="mt-2 text-sm text-slate-500">Здесь собраны ваши запросы и заявки на ваши объявления.</p>{error && <p role="alert" className="mt-5 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800">{error}</p>}{success && <p role="status" className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Статус заявки обновлён.</p>}{bookings.length ? <div className="mt-7 grid gap-4">{bookings.map((booking)=>{const incoming = booking.owner_id === user.id && booking.renter_id !== user.id; const mine = booking.renter_id === user.id; return <article key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:flex sm:items-center sm:justify-between sm:gap-5"><div><p className="text-lg font-black text-slate-950">{booking.listing_title}</p><p className="mt-1 text-sm text-slate-500">{mine ? "Ваша заявка" : `Заявка от ${booking.renter_name}`} · {dateLabel(booking.start_date)} — {dateLabel(booking.end_date)} ({booking.days} дн.)</p></div><div className="mt-4 flex flex-wrap items-center justify-between gap-3 sm:mt-0 sm:justify-end"><b className="text-lg text-slate-950">{rubles(Number(booking.total_price))}</b><span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-800">{statusLabel(booking.status)}</span>{booking.status === "pending" && (incoming || mine) && <form action={updateOwnBookingAction} className="flex w-full flex-wrap gap-2 sm:w-auto"><input type="hidden" name="id" value={booking.id}/>{incoming ? <><button className="button-primary min-h-10 px-3 py-2 text-xs" name="decision" value="confirmed">Принять</button><button className="button-secondary min-h-10 px-3 py-2 text-xs" name="decision" value="rejected">Отклонить</button></> : <button className="button-secondary min-h-10 px-3 py-2 text-xs" name="decision" value="cancelled">Отменить заявку</button>}</form>}</div></article>;})}</div> : <div className="mt-7 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">Заявок пока нет.</div>}</div>;
+}
