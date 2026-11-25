@@ -1,0 +1,34 @@
+name: RentProof v3
+
+on:
+  pull_request:
+    paths:
+      - "rentproof-v3/**"
+      - ".github/workflows/rentproof-v3.yml"
+  push:
+    branches:
+      - master
+      - cursor/rentproof-v3-f2a8
+    paths:
+      - "rentproof-v3/**"
+      - ".github/workflows/rentproof-v3.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rentproof-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rentproof-v3/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
